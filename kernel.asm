@@ -6,7 +6,7 @@ kernel_message:
     mov ah,0x13
     mov cx,13
     mov al,0x00
-    mov dh,10
+    mov dh,12
     mov dl,4
     mov bx,0x02
     int 0x10
