@@ -82,7 +82,66 @@ void readFat1Table(int fd, uint16_t* table, const Fat16BootSector* bs, uint32_t 
   }
 }
 
-void readFile(const char* filename_) {
+
+void list_(const char* filename_) {
+  uint16_t fatTable[128 * 1024] = {0};
+  const int fd = open("./sd.img",O_RDONLY);
+  PartitionTable pt[4] = {0};
+  Fat16BootSector bs = {0};
+
+  uint8_t sectorBuffer[512] = {0};
+
+  ataReadSector(fd,0,sectorBuffer);
+  PartitionTable* ptTmp = (PartitionTable*)(sectorBuffer + 0x1BE);
+  pt[0] = *ptTmp;
+
+  ataReadSector(fd,pt[0].start_sector,sectorBuffer);
+  Fat16BootSector* bsTmp = (Fat16BootSector*)sectorBuffer;
+  bs = *bsTmp;
+
+  readFat1Table(fd,fatTable,&bs,pt[0].start_sector);
+
+  unsigned int rootDirLBA = (pt[0].start_sector + bs.reserved_sectors) + bs.number_of_fats * bs.fat_size_sectors;
+
+  unsigned int rootDirSectors = (bs.root_dir_entries * sizeof(Fat16Entry)) / 512;
+
+  for (int s = 0; s < rootDirSectors; s++) {
+    ataReadSector(fd, rootDirLBA + s, sectorBuffer);
+
+    int noOfEntries = 512 / sizeof(Fat16Entry);
+
+    for (int i = 0; i < noOfEntries; i++) {
+      Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + i * sizeof(Fat16Entry));
+
+      if (entryTmp->filename[0] == 0x00) return;
+      if (entryTmp->filename[0] == 0xE5) continue;
+
+      char BUF[255] = {0};
+      stringFat16Format(BUF,entryTmp->filename,entryTmp->ext);
+      if (!stringCompare(filename_,"/")) {
+        const char* type = (entryTmp->attributes & 0x10) ? "<DIR>" : "     ";
+        printf("%s %-12s %10u bytes\n", type, BUF, entryTmp->file_size);
+        continue;
+      }
+      if (!stringCompare(BUF, filename_)) {
+        if (entryTmp->attributes & 0x10) {
+          printf("Found DIRECTORY: %s\n", BUF);
+          printf("Start cluster: %u\n", entryTmp->starting_cluster);
+        }
+        else {
+          printf("FILE: %s\n", BUF);
+          printf("Size: %u bytes\n", entryTmp->file_size);
+          printf("Start cluster: %u\n", entryTmp->starting_cluster);
+
+        }
+        return;
+      }
+    }
+  }
+  close(fd);
+}
+
+void read_(const char* filename_) {
   uint16_t fatTable[128 * 1024] = {0};
   const int fd = open("./sd.img",O_RDONLY);
   PartitionTable pt[4] = {0};

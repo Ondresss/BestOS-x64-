@@ -1,7 +1,7 @@
 #include "diskAccess.h"
 
 int main(void) {
-    readFile("ABSTRAKT.TXT");
+    list_("/");
 
     return 0;
 }
