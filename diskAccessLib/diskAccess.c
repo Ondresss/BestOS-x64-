@@ -119,8 +119,18 @@ void list_(const char* filename_) {
       char BUF[255] = {0};
       stringFat16Format(BUF,entryTmp->filename,entryTmp->ext);
       if (!stringCompare(filename_,"/")) {
-        const char* type = (entryTmp->attributes & 0x10) ? "<DIR>" : "     ";
-        printf("%s %-12s %10u bytes\n", type, BUF, entryTmp->file_size);
+
+        if (entryTmp->attributes & 0x10) {
+          printf("<DIR>         ");
+        } else {
+          printf("      %8u", entryTmp->file_size);
+        }
+
+        printf("  ");
+        // Vypiš dekódované datum a čas
+        //printDosDateTime(entryTmp->modify_date, entryTmp->modify_time);
+        printf("%s",BUF);
+        printf("\n");
         continue;
       }
       if (!stringCompare(BUF, filename_)) {
