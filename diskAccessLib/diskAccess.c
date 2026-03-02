@@ -1,42 +1,7 @@
 #include "diskAccess.h"
 
-unsigned char stringCompare(const char* str1,const char* str2) {
-    int i = 0;
-    while (str1[i] != '\0' && str2[i] != '\0') {
-       if (str1[i] != str2[i]) {
-          return 1;
-       }
-       i++;
-    }
-    return 0;
-}
-
-void stringFat16Format(char* buf,const unsigned char* filename,const unsigned char* ext) {
-    int i = 0;
-    int index = 0;
-    while (i < 8) {
-      if (filename[i] == ' ') {
-        i++;
-        continue;
-      }
-      buf[index++] = filename[i];
-      i++;
-    }
-    if (ext[0] == ' ') {
-      buf[index] = 0;
-      return;
-    }
-    buf[index++] = '.';
-    i = 0;
-    while (i < 3) {
-      if (ext[i] == ' ') {
-        i++;
-        continue;
-      }
-      buf[index++] = ext[i];
-      i++;
-    }
-    buf[index] = 0;
+void console_write(const char *buf, uint32_t len) {
+  write(1,buf,len);
 }
 
 int ataReadSector(int fd, uint32_t lba, uint8_t *buffer) {
@@ -120,28 +85,67 @@ void list_(const char* filename_) {
       stringFat16Format(BUF,entryTmp->filename,entryTmp->ext);
       if (!stringCompare(filename_,"/")) {
         Date date = parseDate(entryTmp->modify_date);
-        printf("%d.%d.%d ",date.day,date.month,date.year);
+        char day[10], month[10], year[10], filesize[20];
+        char space = ' ';
+        char dot = '.';
+        char zero = '0';
+
+        if (date.day < 10) console_write(&zero, 1);
+        int dayLen = unsignedIntToString(day, date.day);
+        console_write(day, dayLen);
+        console_write(&dot, 1);
+
+        if (date.month < 10) console_write(&zero, 1);
+        int monthLen = unsignedIntToString(month, date.month);
+        console_write(month, monthLen);
+        console_write(&dot, 1);
+
+        int yearLen = unsignedIntToString(year, date.year);
+        console_write(year, yearLen);
+        console_write("  ", 2);
+
         if (entryTmp->attributes & 0x10) {
-          printf("<DIR>         ");
+          console_write("<DIR>          ", 15);
         } else {
-          printf("      %8u", entryTmp->file_size);
+          int fileLen = unsignedIntToString(filesize, entryTmp->file_size);
+          int padding = 15 - fileLen;
+          for (int p = 0; p < padding; p++) console_write(&space, 1);
+          console_write(filesize, fileLen);
         }
 
-        printf("  ");
-        printf("%s",BUF);
-        printf("\n");
+        console_write("  ", 2);
+        console_write(BUF, stringLength(BUF));
+        console_write("\n", 1);
         continue;
       }
       if (!stringCompare(BUF, filename_)) {
+        char numBuf[20];
+        int numLen;
+
         if (entryTmp->attributes & 0x10) {
-          printf("Found DIRECTORY: %s\n", BUF);
-          printf("Start cluster: %u\n", entryTmp->starting_cluster);
+          console_write("Found DIRECTORY: ", 17);
+          console_write(BUF, stringLength(BUF));
+          console_write("\n", 1);
+
+          console_write("Start cluster: ", 15);
+          numLen = unsignedIntToString(numBuf, entryTmp->starting_cluster);
+          console_write(numBuf, numLen);
+          console_write("\n", 1);
         }
         else {
-          printf("FILE: %s\n", BUF);
-          printf("Size: %u bytes\n", entryTmp->file_size);
-          printf("Start cluster: %u\n", entryTmp->starting_cluster);
+          console_write("FILE: ", 6);
+          console_write(BUF, stringLength(BUF));
+          console_write("\n", 1);
 
+          console_write("Size: ", 6);
+          numLen = unsignedIntToString(numBuf, entryTmp->file_size);
+          console_write(numBuf, numLen);
+          console_write(" bytes\n", 7);
+
+          console_write("Start cluster: ", 15);
+          numLen = unsignedIntToString(numBuf, entryTmp->starting_cluster);
+          console_write(numBuf, numLen);
+          console_write("\n", 1);
         }
         return;
       }

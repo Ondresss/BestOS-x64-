@@ -1,7 +1,7 @@
 #include "diskAccess.h"
 
 int main(void) {
-    list_("/");
+    read_("FAT16.JPG");
 
     return 0;
 }

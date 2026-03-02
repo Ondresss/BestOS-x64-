@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include <stdio.h>
+#include "strings.h"
 
 typedef struct {
     unsigned int day;
@@ -11,8 +11,9 @@ typedef struct {
 }Date;
 
 
-unsigned char stringCompare(const char* str1,const char* str2);
-void stringFat16Format(char* buf,const unsigned char* filename,const unsigned char* ext);
+void console_write(const char *buf, uint32_t len);
+
+
 
 void read_(const char* filename_);
 void list_(const char* filename_);
