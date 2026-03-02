@@ -5,17 +5,17 @@
     <option name="linkedExternalProjectsSettings">
       <MakefileProjectSettings>
         <option name="cleanTarget" value="all" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$/fat" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/diskAccessLib" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$/fat" />
+            <option value="$PROJECT_DIR$/diskAccessLib" />
           </set>
         </option>
         <option name="version" value="2" />
       </MakefileProjectSettings>
     </option>
   </component>
-  <component name="MakefileWorkspace" PROJECT_DIR="$PROJECT_DIR$/fat">
+  <component name="MakefileWorkspace" PROJECT_DIR="$PROJECT_DIR$/diskAccessLib">
     <contentRoot DIR="$PROJECT_DIR$" />
   </component>
 </project>

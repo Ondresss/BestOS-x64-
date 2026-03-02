@@ -119,7 +119,8 @@ void list_(const char* filename_) {
       char BUF[255] = {0};
       stringFat16Format(BUF,entryTmp->filename,entryTmp->ext);
       if (!stringCompare(filename_,"/")) {
-
+        Date date = parseDate(entryTmp->modify_date);
+        printf("%d.%d.%d ",date.day,date.month,date.year);
         if (entryTmp->attributes & 0x10) {
           printf("<DIR>         ");
         } else {
@@ -127,8 +128,6 @@ void list_(const char* filename_) {
         }
 
         printf("  ");
-        // Vypiš dekódované datum a čas
-        //printDosDateTime(entryTmp->modify_date, entryTmp->modify_time);
         printf("%s",BUF);
         printf("\n");
         continue;
@@ -150,6 +149,17 @@ void list_(const char* filename_) {
   }
   close(fd);
 }
+
+Date parseDate(uint16_t date) {
+  Date date_ = {0};
+  date_.day = date & 0x001F;
+  date_.month = (date >> 5) & 0x0F;
+  date_.year = 1980 + ((date >> 9) & 0x7F);
+
+  return date_;
+}
+
+
 
 void read_(const char* filename_) {
   uint16_t fatTable[128 * 1024] = {0};
