@@ -1,3 +1,4 @@
+#include "strings.h"
 
 int stringLength(const char* str) {
     int i = 0;
@@ -8,6 +9,44 @@ int stringLength(const char* str) {
 }
 
 
+void memZero(char* dest,int len) {
+    for (int i = 0; i < len; ++i) {
+        dest[i] = 0;
+    }
+}
+
+
+
+void formatFat16FileName(unsigned char* dest,const char* src) {
+    int i = 0;
+    while (src[i] != '.' && src[i] != '\0') {
+        dest[i] = src[i];
+        i++;
+    }
+    int index = i;
+    index++;
+    while (i <= 7) {
+        dest[i++] = ' ';
+    }
+    while (src[index] != '\0') {
+        dest[i++] = src[index++];
+    }
+    while (i <= 11) {
+        dest[i++] = ' ';
+    }
+}
+
+
+
+void stringCat(char* str1,char* str2) {
+    int len = stringLength(str1);
+    int len2 = stringLength(str2);
+    int i = 0;
+    for (i = 0; i < len2; ++i) {
+        str1[i + len] = str2[i];
+    }
+    str1[i + len] = 0;
+}
 
 int unsignedIntToString(char* buf,unsigned int number){
     unsigned int cur = number;

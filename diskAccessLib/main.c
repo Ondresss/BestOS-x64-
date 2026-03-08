@@ -1,7 +1,9 @@
 #include "diskAccess.h"
 
 int main(void) {
-    read_("FAT16.JPG");
-
+    initFileSystem("./sd.img");
+    //write_("HEJ.txt");
+    printTree();
+    read_("HEJ.txt");
     return 0;
 }
