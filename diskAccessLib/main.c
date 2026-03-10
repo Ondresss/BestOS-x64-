@@ -2,8 +2,10 @@
 
 int main(void) {
     initFileSystem("./sd.img");
-    //write_("HEJ.txt");
+    changeDir("ADR1");
+    //write_("AHOJ.txt");
+    delete_("KOCKA.JPG");
+    read_("KOREN.TXT");
     printTree();
-    read_("HEJ.txt");
     return 0;
 }

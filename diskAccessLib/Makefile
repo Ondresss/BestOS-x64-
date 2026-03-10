@@ -13,9 +13,6 @@ $(TARGET): $(SRCS)
 restore:
 	@if [ -f $(BACKUP) ]; then \
 		cp $(BACKUP) $(IMAGE); \
-		echo "Disk obraz $(IMAGE) byl obnoven ze zálohy."; \
-	else \
-		echo "Chyba: Soubor $(BACKUP) neexistuje! Nejdřív si vytvoř zálohu."; \
 	fi
 
 backup:

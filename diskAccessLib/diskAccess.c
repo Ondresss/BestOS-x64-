@@ -1,7 +1,7 @@
 #include "diskAccess.h"
 
-extern CurrentDir currentDir;
-extern FileSystem fileSystem;
+CurrentDir currentDir;
+FileSystem fileSystem;
 
 
 void console_write(const char *buf, uint32_t len) {
@@ -22,15 +22,23 @@ int ataReadSector(int fd, uint32_t lba, uint8_t *buffer) {
   return 0;
 }
 
-void readFileContent(const Fat16Entry* entry, unsigned  int dataAreaLBA) {
+void readFileContent(const Fat16Entry* entry, unsigned int dataAreaLBA) {
   uint16_t currentCluster = entry->starting_cluster;
   uint8_t sectorBuffer[512] = {0};
-  while (currentCluster < 0xFFF8) {
+  uint32_t remainingBytes = entry->file_size;
+
+  while (currentCluster < 0xFFF8 && remainingBytes > 0) {
     unsigned int clusterStart = dataAreaLBA + (currentCluster - 2) * fileSystem.bs.sectors_per_cluster;
-    for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
-        ataReadSector(fileSystem.fd,clusterStart + i, sectorBuffer);
-        write(1,sectorBuffer,512);
+
+    for (int i = 0; i < fileSystem.bs.sectors_per_cluster && remainingBytes > 0; ++i) {
+      ataReadSector(fileSystem.fd, clusterStart + i, sectorBuffer);
+      uint32_t bytesToWrite = (remainingBytes > 512) ? 512 : remainingBytes;
+
+      write(1, sectorBuffer, bytesToWrite);
+
+      remainingBytes -= bytesToWrite;
     }
+
     currentCluster = fileSystem.fatTable[currentCluster];
   }
 }
@@ -50,7 +58,6 @@ void readFat1Table(int fd, uint16_t* table, const Fat16BootSector* bs, uint32_t 
     }
   }
 }
-
 void initFileSystem(const char* filename_) {
   uint16_t fatTable[128 * 1024] = {0};
   const int fd = open(filename_,O_RDWR);
@@ -68,11 +75,14 @@ void initFileSystem(const char* filename_) {
   fileSystem.rootDirLBA = rootDirLBA;
   fileSystem.rootDirSectors = rootDirSectors;
   readFat1Table(fileSystem.fd,fileSystem.fatTable,&fileSystem.bs,fileSystem.pt[0].start_sector);
+
+  currentDir.dirLBA = -1;
+  memZero(currentDir.filename,256);
 }
 
-void changeDirRecursive(const char* dirName,const Fat16Entry* dirEntry,int dataLBA) {
+int changeDirRecursive(const char* dirName,const Fat16Entry* dirEntry,int dataLBA) {
   int startingDirCluster = dirEntry->starting_cluster;
-  if (startingDirCluster == 0) return;
+  if (startingDirCluster == 0) return 0;
 
   uint8_t sectorBuffer[512];
   unsigned int clusterStart = dataLBA + (startingDirCluster - 2) * fileSystem.bs.sectors_per_cluster;
@@ -83,7 +93,7 @@ void changeDirRecursive(const char* dirName,const Fat16Entry* dirEntry,int dataL
     for (int j = 0; j < 16; j++) {
       Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
 
-      if (entryTmp->filename[0] == 0x00) return;
+      if (entryTmp->filename[0] == 0x00) continue;
       if (entryTmp->filename[0] == 0xE5) continue;
 
       if (entryTmp->filename[0] == '.') continue;
@@ -93,18 +103,26 @@ void changeDirRecursive(const char* dirName,const Fat16Entry* dirEntry,int dataL
 
       if (entryTmp->attributes & 0x10) {
           if (!stringCompare(BUF,dirName)) {
-              currentDir.dirLBA = clusterStart;
               stringCat(currentDir.filename,BUF);
+              currentDir.dirLBA = dataLBA + (entryTmp->starting_cluster - 2) * fileSystem.bs.sectors_per_cluster;
+              return 1;
           } else {
-              changeDirRecursive(dirName,entryTmp,dataLBA);
+              if (changeDirRecursive(dirName,entryTmp,dataLBA) == 1) return 1;
           }
 
       }
     }
   }
+  return 0;
 }
 
 void changeDir(const char* dirName) {
+  if (!stringCompare(dirName,"/")) {
+      currentDir.dirLBA = -1;
+      char root[] = "/";
+      stringCat(currentDir.filename,root);
+      return;
+  }
   uint8_t sectorBuffer[512] = {0};
   for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
     ataReadSector(fileSystem.fd, fileSystem.rootDirLBA + s, sectorBuffer);
@@ -114,15 +132,20 @@ void changeDir(const char* dirName) {
     for (int i = 0; i < noOfEntries; i++) {
       Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + i * sizeof(Fat16Entry));
 
-      if (entryTmp->filename[0] == 0x00) return;
+      if (entryTmp->filename[0] == 0x00) continue;
       if (entryTmp->filename[0] == 0xE5) continue;
 
       char BUF[255] = {0};
       stringFat16Format(BUF,entryTmp->filename,entryTmp->ext);
-
+      unsigned int dataLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
       if (entryTmp->attributes & 0x10) {
-          int dataLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
-          changeDirRecursive(dirName,entryTmp,dataLBA);
+          if (!stringCompare(BUF,dirName)) {
+            stringCat(currentDir.filename,BUF);
+            currentDir.dirLBA = dataLBA + (entryTmp->starting_cluster - 2) * fileSystem.bs.sectors_per_cluster;
+            return;
+          } else {
+            if (changeDirRecursive(dirName,entryTmp,dataLBA) == 1) return;
+          }
       }
 
     }
@@ -328,8 +351,32 @@ void updateFatTable() {
 
 
 void findFirstFreeEntry(const char* fileName, int startingCluster, uint32_t fileSize) {
-  uint8_t sectorBuffer[512];
+  uint8_t sectorBuffer[512] = {0};
+  if (currentDir.dirLBA != -1) {
 
+    for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
+      ataReadSector(fileSystem.fd, currentDir.dirLBA + i, sectorBuffer);
+
+      for (int j = 0; j < 16; j++) {
+        Fat16Entry* entry = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
+
+        if (entry->filename[0] == 0x00 || (uint8_t)entry->filename[0] == 0xE5) {
+
+          formatFat16FileName(entry->filename,fileName);
+
+          entry->attributes = 0x20;
+          entry->starting_cluster = (uint16_t)startingCluster;
+          entry->file_size = fileSize;
+
+          ataWriteSector(currentDir.dirLBA + i, sectorBuffer);
+
+          return;
+        }
+      }
+      }
+
+    return;
+  }
   for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
     ataReadSector(fileSystem.fd,fileSystem.rootDirLBA + s, sectorBuffer);
     int noOfEntries = 512 / sizeof(Fat16Entry);
@@ -393,6 +440,26 @@ void write_(const char* filename_) {
 
 void read_(const char* filename_) {
   uint8_t sectorBuffer[512] = {0};
+  if (currentDir.dirLBA != -1) {
+    for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
+      ataReadSector(fileSystem.fd, currentDir.dirLBA + i, sectorBuffer);
+
+      for (int j = 0; j < 16; j++) {
+        Fat16Entry* entry = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
+        if (entry->filename[0] == 0x00) continue;
+        if (entry->filename[0] == 0xE5) continue;
+
+        char BUF[255] = {0};
+        stringFat16Format(BUF,entry->filename,entry->ext);
+
+        if (!stringCompare(BUF, filename_)) {
+          int dataStartLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
+          readFileContent(entry,dataStartLBA);
+        }
+      }
+    }
+    return;
+  }
   for (int s = 0; s < fileSystem.rootDirSectors; s++) {
     ataReadSector(fileSystem.fd, fileSystem.rootDirLBA + s, sectorBuffer);
 
@@ -414,3 +481,122 @@ void read_(const char* filename_) {
     }
   }
 }
+
+Fat16Entry findEntryAndEraseRecursive(const char* fileName,const Fat16Entry* entry) {
+  int startingDirCluster = entry->starting_cluster;
+  uint8_t sectorBuffer[512];
+  unsigned int dataLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
+  unsigned int clusterStart = dataLBA + (startingDirCluster - 2) * fileSystem.bs.sectors_per_cluster;
+  Fat16Entry entryCopy;
+  memZero((char*)&entryCopy,sizeof(entryCopy));
+  for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
+    ataReadSector(fileSystem.fd, clusterStart + i, sectorBuffer);
+
+    for (int j = 0; j < 16; j++) {
+      Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
+
+      if (entryTmp->filename[0] == 0x00) return entryCopy ;
+      if (entryTmp->filename[0] == 0xE5) continue;
+
+      if (entryTmp->filename[0] == '.') continue;
+
+      char BUF[13] = {0};
+      stringFat16Format(BUF, entryTmp->filename, entryTmp->ext);
+      if (entryTmp->attributes & 0x10) {
+        entryCopy = findEntryAndEraseRecursive(fileName, entryTmp);
+        if (entryCopy.filename[0] != 0) {
+          return entryCopy;
+        };
+      }
+      if (!stringCompare(BUF, fileName)) {
+        entryCopy = *entryTmp;
+        entryTmp->filename[0] = 0xE5;
+        ataWriteSector(clusterStart + i, sectorBuffer);
+        return entryCopy;
+      }
+
+    }
+  }
+  return entryCopy;
+}
+Fat16Entry findEntryAndErase(const char* fileName) {
+  uint8_t sectorBuffer[512];
+  Fat16Entry entryCopy;
+  memZero((char*)&entryCopy,sizeof(entryCopy));
+
+  if (currentDir.dirLBA != -1) {
+
+    for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
+      ataReadSector(fileSystem.fd, currentDir.dirLBA + i, sectorBuffer);
+
+      for (int j = 0; j < 16; j++) {
+        Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
+
+        if (entryTmp->filename[0] == 0x00) return entryCopy ;
+        if (entryTmp->filename[0] == 0xE5) continue;
+
+        if (entryTmp->filename[0] == '.') continue;
+
+        char BUF[13] = {0};
+        stringFat16Format(BUF, entryTmp->filename, entryTmp->ext);
+        if (!stringCompare(BUF, fileName)) {
+          entryCopy = *entryTmp;
+          entryTmp->filename[0] = 0xE5;
+          ataWriteSector(currentDir.dirLBA + i, sectorBuffer);
+          return entryCopy;
+        }
+
+      }
+    }
+
+    return entryCopy;
+  }
+
+
+  for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
+    ataReadSector(fileSystem.fd,fileSystem.rootDirLBA + s, sectorBuffer);
+    int noOfEntries = 512 / sizeof(Fat16Entry);
+
+    for (int i = 0; i < noOfEntries; i++) {
+      Fat16Entry* entry = (Fat16Entry*)(sectorBuffer + i * sizeof(Fat16Entry));
+      if (entry->filename[0] == 0x00 || (uint8_t)entry->filename[0] == 0xE5) continue;
+      if (entry->attributes & 0x10) {
+        entryCopy = findEntryAndEraseRecursive(fileName, entry);
+        if (entryCopy.filename[0] != 0) return entryCopy;
+      }
+      char FILENAME[13] = {0};
+      stringFat16Format(FILENAME,entry->filename,entry->ext);
+      if (!stringCompare(FILENAME, fileName)) {
+          entryCopy = *entry;
+          entry->filename[0] = 0xE5;
+          ataWriteSector(fileSystem.rootDirLBA + s, sectorBuffer);
+          return entryCopy;
+      }
+    }
+  }
+  return entryCopy;
+}
+
+
+
+void delete_(const char* filename_) {
+  Fat16Entry entry = findEntryAndErase(filename_);
+  if (entry.filename[0] == 0x00) {
+    console_write("Could not find entry\n",21);
+    return;
+  }
+  unsigned int currentCluster = entry.starting_cluster;
+  while (fileSystem.fatTable[currentCluster] < 0xFFF8 ) {
+    fileSystem.fatTable[currentCluster] = 0x00;
+    currentCluster = fileSystem.fatTable[currentCluster];
+  }
+  updateFatTable();
+}
+
+
+
+
+
+
+
+
