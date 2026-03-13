@@ -30,6 +30,12 @@ static const struct fuse_opt option_spec[] = {
         OPTION("--help", show_help),
         FUSE_OPT_END
 };
+
+static void set_context_by_path(const char *path) {
+        char parentPath[256] = {0};
+        getParentPath(path, parentPath);
+        changeDirAbsolute_(parentPath);
+}
  
 static void *hello_init(struct fuse_conn_info *conn,
                         struct fuse_config *cfg)
@@ -39,24 +45,33 @@ static void *hello_init(struct fuse_conn_info *conn,
         return NULL;
 }
  
-static int hello_getattr(const char *path, struct stat *stbuf,
-                         struct fuse_file_info *fi)
+static int hello_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
 {
         (void) fi;
-        int res = 0;
- 
         memset(stbuf, 0, sizeof(struct stat));
+
         if (strcmp(path, "/") == 0) {
                 stbuf->st_mode = S_IFDIR | 0755;
                 stbuf->st_nlink = 2;
-        } else if (strcmp(path+1, options.filename) == 0) {
+                return 0;
+        }
+
+        set_context_by_path(path);
+        Fat16Entry entry = findEntryInCurrentDir(path);
+
+        if (entry.filename[0] == 0x00 || (unsigned char)entry.filename[0] == 0xE5) {
+                return -ENOENT;
+        }
+
+        if (entry.attributes & 0x10) {
+                stbuf->st_mode = S_IFDIR | 0755;
+                stbuf->st_nlink = 2;
+        } else {
                 stbuf->st_mode = S_IFREG | 0444;
                 stbuf->st_nlink = 1;
-                stbuf->st_size = strlen(options.contents);
-        } else
-                res = -ENOENT;
- 
-        return res;
+                stbuf->st_size = entry.file_size;
+        }
+        return 0;
 }
 //DAVAT UMOUNT na adresari
 static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
@@ -79,33 +94,35 @@ static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         return 0;
 }
  
-static int hello_open(const char *path, struct fuse_file_info *fi)
-{
-        if (strcmp(path+1, options.filename) != 0)
+static int hello_open(const char *path, struct fuse_file_info *fi) {
+        char parentPath[256];
+        getParentPath(path, parentPath);
+        changeDirAbsolute_(parentPath);
+
+        Fat16Entry entry = findEntryInCurrentDir(path);
+
+        if (entry.filename[0] == 0x00 || entry.filename[0] == 0xE5) {
                 return -ENOENT;
- 
+        }
+
         if ((fi->flags & O_ACCMODE) != O_RDONLY)
                 return -EACCES;
- 
+
         return 0;
 }
  
 static int hello_read(const char *path, char *buf, size_t size, off_t offset,
-                      struct fuse_file_info *fi)
-{
-        size_t len;
+                      struct fuse_file_info *fi) {
         (void) fi;
-        if(strcmp(path+1, options.filename) != 0)
-                return -ENOENT;
- 
-        len = strlen(options.contents);
-        if (offset < len) {
-                if (offset + size > len)
-                        size = len - offset;
-                memcpy(buf, options.contents + offset, size);
-        } else
-                size = 0;
- 
+        set_context_by_path(path);
+        Fat16Entry entry = findEntryInCurrentDir(path);
+
+        if (offset >= entry.file_size) return 0;
+        if (offset + size > entry.file_size) size = entry.file_size - offset;
+        char filename[13] = {0};
+        stringFat16Format(filename,entry.filename,entry.ext);
+        read_(filename,buf);
+
         return size;
 }
  
@@ -130,30 +147,20 @@ static void show_help(const char *progname)
  
 int main(int argc, char *argv[]) {
         int ret;
-        changeDirAbsolute_("/ADR1");
         printf("%d\n",currentDir.dirLBA);
         struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
         initFileSystem("./sd.img");
         /* Set defaults -- we have to use strdup so that
            fuse_opt_parse can free the defaults if other
            values are specified */
-        options.filename = strdup("hello");
-        options.contents = strdup("Hello World!\n");
 
-        /* Parse options */
-        if (fuse_opt_parse(&args, &options, option_spec, NULL) == -1)
-                return 1;
 
         /* When --help is specified, first print our own file-system
            specific help text, then signal fuse_main to show
            additional help (by adding `--help` to the options again)
            without usage: line (by setting argv[0] to the empty
            string) */
-        if (options.show_help) {
-                show_help(argv[0]);
-                assert(fuse_opt_add_arg(&args, "--help") == 0);
-                args.argv[0][0] = '\0';
-        }
+
 
         ret = fuse_main(args.argc, args.argv, &hello_oper, NULL);
         fuse_opt_free_args(&args);

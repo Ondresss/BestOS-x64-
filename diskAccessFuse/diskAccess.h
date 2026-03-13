@@ -35,7 +35,7 @@ void console_write(const char *buf, uint32_t len);
 void initFileSystem(const char* filename_);
 
 void printTree();
-void read_(const char* filename_);
+void read_(const char* filename_,char* BUFFER);
 void list_(const char* filename_);
 void changeDir(const char* dirName);
 void write_(const char* filename_);
@@ -43,14 +43,15 @@ void delete_(const char* filename_);
 void changeDirAbsolute_(const char* absolutePath);
 
 int getCurrentEntries(Fat16Entry* arr);
-
+Fat16Entry findEntryInCurrentDir(const char* path);
+void getParentPath(const char *path, char *parent);
 
 static int changeDirRecursive(const char* dirName,const Fat16Entry* dirEntry,int dataLBA);
 static Date parseDate(uint16_t date);
 static void readFat1Table(int fd, uint16_t* table, const Fat16BootSector* bs, uint32_t pos);
 static int ataReadSector(int fd, uint32_t lba, uint8_t *buffer);
 static void ataWriteSector(uint32_t lba, uint8_t *buffer);
-static void readFileContent(const Fat16Entry* entry, unsigned  int dataAreaLBA);
+static void readFileContent(const Fat16Entry* entry, unsigned  int dataAreaLBA,char* BUFFER);
 static void printDirRecursive(const Fat16Entry* dirEntry,char* padding,int dataLBA);
 static int findFreeCluster();
 static void writeCluster(int clusterNumber,uint8_t* buffer);
@@ -58,3 +59,4 @@ static void updateFatTable();
 static void findFirstFreeEntry(const char* fileName, int startingCluster, uint32_t fileSize);
 static Fat16Entry findEntryAndErase(const char* fileName);
 static Fat16Entry findEntryAndEraseRecursive(const char* fileName,const Fat16Entry* entry);
+

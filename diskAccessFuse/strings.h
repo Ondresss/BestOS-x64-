@@ -7,3 +7,6 @@ int stringLength(const char* str);
 void stringCat(char* str1,char* str2);
 void formatFat16FileName(unsigned char* dest,const char* src);
 void memZero(char* dest,int len);
+int stringFindChar(const char* str,char c,bool direction,int skip);
+
+void memoryCopy(void *dest, const void *src, size_t n);

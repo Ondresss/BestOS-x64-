@@ -1,5 +1,7 @@
 #include "diskAccess.h"
 
+#include <string.h>
+
 CurrentDir currentDir;
 FileSystem fileSystem;
 
@@ -22,7 +24,7 @@ int ataReadSector(int fd, uint32_t lba, uint8_t *buffer) {
   return 0;
 }
 
-void readFileContent(const Fat16Entry* entry, unsigned int dataAreaLBA) {
+void readFileContent(const Fat16Entry* entry, unsigned int dataAreaLBA,char* BUFFER) {
   uint16_t currentCluster = entry->starting_cluster;
   uint8_t sectorBuffer[512] = {0};
   uint32_t remainingBytes = entry->file_size;
@@ -33,8 +35,13 @@ void readFileContent(const Fat16Entry* entry, unsigned int dataAreaLBA) {
     for (int i = 0; i < fileSystem.bs.sectors_per_cluster && remainingBytes > 0; ++i) {
       ataReadSector(fileSystem.fd, clusterStart + i, sectorBuffer);
       uint32_t bytesToWrite = (remainingBytes > 512) ? 512 : remainingBytes;
-
-      write(1, sectorBuffer, bytesToWrite);
+      if(BUFFER) {
+          memoryCopy(BUFFER,sectorBuffer,bytesToWrite);
+          BUFFER+=bytesToWrite;
+      } else
+      {
+        write(1,sectorBuffer,bytesToWrite);
+      }
 
       remainingBytes -= bytesToWrite;
     }
@@ -438,7 +445,7 @@ void write_(const char* filename_) {
   }
 }
 
-void read_(const char* filename_) {
+void read_(const char* filename_,char* BUFFER) {
   uint8_t sectorBuffer[512] = {0};
   if (currentDir.dirLBA != -1) {
     for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
@@ -454,7 +461,7 @@ void read_(const char* filename_) {
 
         if (!stringCompare(BUF, filename_)) {
           int dataStartLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
-          readFileContent(entry,dataStartLBA);
+          readFileContent(entry,dataStartLBA,BUFFER);
         }
       }
     }
@@ -476,7 +483,7 @@ void read_(const char* filename_) {
 
       if (!stringCompare(BUF, filename_)) {
          int dataStartLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
-         readFileContent(entryTmp,dataStartLBA);
+         readFileContent(entryTmp,dataStartLBA,BUFFER);
       }
     }
   }
@@ -519,6 +526,7 @@ Fat16Entry findEntryAndEraseRecursive(const char* fileName,const Fat16Entry* ent
   }
   return entryCopy;
 }
+
 Fat16Entry findEntryAndErase(const char* fileName) {
   uint8_t sectorBuffer[512];
   Fat16Entry entryCopy;
@@ -594,24 +602,31 @@ void delete_(const char* filename_) {
 }
 
 void changeDirAbsolute_(const char* absolutePath) {
-    char currentDirBuf[256] = {0};
-    int currentDirIndex = 0;
-    unsigned int len = stringLength(absolutePath);
-    if (len == 1 && absolutePath[0] == '/') {
-      changeDir("/");
-      return;
-    }
-    for (int i = 1 ; i < len; ++i) {
-      if (absolutePath[i] != '/') {
-          currentDirBuf[currentDirIndex++] = absolutePath[i];
-      } else {
-          changeDir(currentDirBuf);
-          currentDirIndex = 0;
-          memZero(currentDirBuf,256);
+  char currentDirBuf[256] = {0};
+  int currentDirIndex = 0;
+  unsigned int len = stringLength(absolutePath);
+
+  changeDir("/");
+
+  if (len <= 1) return;
+
+  for (int i = 1; i < len; ++i) {
+    if (absolutePath[i] != '/' ) {
+      currentDirBuf[currentDirIndex++] = absolutePath[i];
+    } else {
+      if (currentDirIndex > 0) {
+        currentDirBuf[currentDirIndex] = '\0';
+        changeDir(currentDirBuf);
+        currentDirIndex = 0;
+        memZero(currentDirBuf,256);
       }
     }
+  }
+  if (currentDirIndex > 0) {
+    currentDirBuf[currentDirIndex] = '\0';
+    changeDir(currentDirBuf);
+  }
 }
-
 int getCurrentEntries(Fat16Entry* arr) {
   uint8_t sectorBuffer[512] = {0};
   int entryIndex = 0;
@@ -646,7 +661,51 @@ int getCurrentEntries(Fat16Entry* arr) {
   return entryIndex;
 }
 
+Fat16Entry findEntryInCurrentDir(const char* path) {
+  Fat16Entry entries[16] = {0};
+  Fat16Entry empty = {0};
 
+  const char* lastPart = path;
+  for (int i = stringLength(path) - 1; i >= 0; i--) {
+    if (path[i] == '/') {
+      lastPart = &path[i + 1];
+      break;
+    }
+  }
 
+  if (stringLength(lastPart) == 0) return empty;
 
+  int noEntries = getCurrentEntries(entries);
 
+  for (int i = 0; i < noEntries; i++) {
+    char fileName[13] = {0};
+    stringFat16Format(fileName, entries[i].filename, entries[i].ext);
+
+    if (!stringCompare(fileName, (char*)lastPart)) {
+      return entries[i];
+    }
+  }
+
+  return empty;
+}
+
+void getParentPath(const char *path, char *parent) {
+  int len = stringLength(path);
+  if (len <= 1) {
+    parent[0] = '/';
+    parent[1] = '\0';
+    return;
+  }
+  stringCat(parent, path);
+
+  int slashIndex = stringFindChar(path,'/',true,0);
+
+  if (slashIndex == 0) {
+    parent[1] = '\0';
+  } else if (slashIndex > 0) {
+    parent[slashIndex] = '\0';
+  } else {
+    parent[0] = '/';
+    parent[1] = '\0';
+  }
+}

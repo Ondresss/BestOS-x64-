@@ -102,3 +102,39 @@ void stringFat16Format(char* buf,const unsigned char* filename,const unsigned ch
     }
     buf[index] = 0;
 }
+int stringFindChar(const char* str,char c,bool direction,int skip) {
+    int currentSkip = skip;
+    if (direction) {
+        for (int i = stringLength(str) - 1; i >= 0; --i) {
+            if (str[i] == c) {
+                if (skip > 0 ) {
+                    skip--;
+                    continue;
+                } else {
+                    return i;
+                }
+            }
+        }
+    } else {
+        for (int i = 0; i < stringLength(str); ++i) {
+            if (str[i] == c) {
+                if (skip > 0 ) {
+                    skip--;
+                    continue;
+                } else {
+                    return i;
+                }
+            }
+        }
+    }
+}
+
+void memoryCopy(void *dest, const void *src, size_t n) {
+    char *d = (char *)dest;
+    const char *s = (const char *)src;
+
+    for (size_t i = 0; i < n; i++) {
+        d[i] = s[i];
+    }
+
+}
