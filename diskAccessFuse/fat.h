@@ -1,5 +1,6 @@
 // FAT16 structures
 // see http://www.tavi.co.uk/phobos/fat.html
+#pragma once
 
 typedef struct {
     unsigned char first_byte;

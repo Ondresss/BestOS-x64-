@@ -38,7 +38,7 @@ void formatFat16FileName(unsigned char* dest,const char* src) {
 
 
 
-void stringCat(char* str1,char* str2) {
+void stringCat(char* str1,const char* str2) {
     int len = stringLength(str1);
     int len2 = stringLength(str2);
     int i = 0;
@@ -107,8 +107,8 @@ int stringFindChar(const char* str,char c,bool direction,int skip) {
     if (direction) {
         for (int i = stringLength(str) - 1; i >= 0; --i) {
             if (str[i] == c) {
-                if (skip > 0 ) {
-                    skip--;
+                if (currentSkip > 0 ) {
+                    currentSkip--;
                     continue;
                 } else {
                     return i;
@@ -118,8 +118,8 @@ int stringFindChar(const char* str,char c,bool direction,int skip) {
     } else {
         for (int i = 0; i < stringLength(str); ++i) {
             if (str[i] == c) {
-                if (skip > 0 ) {
-                    skip--;
+                if (currentSkip > 0 ) {
+                    currentSkip--;
                     continue;
                 } else {
                     return i;
@@ -127,6 +127,7 @@ int stringFindChar(const char* str,char c,bool direction,int skip) {
             }
         }
     }
+    return -1;
 }
 
 void memoryCopy(void *dest, const void *src, size_t n) {
@@ -137,4 +138,20 @@ void memoryCopy(void *dest, const void *src, size_t n) {
         d[i] = s[i];
     }
 
+}
+
+void stringParseFilename(char* BUFFER, const char* path) {
+    int slashIndex = stringFindChar(path, '/', true, 0);
+
+    if (slashIndex != -1 && path[slashIndex + 1] == '\0') {
+        slashIndex = stringFindChar(path, '/', true, 1);
+    }
+    int i = (slashIndex == -1) ? 0 : slashIndex + 1;
+    int bufferIndex = 0;
+
+    while (path[i] != '\0' && path[i] != '/') {
+        BUFFER[bufferIndex++] = path[i];
+        i++;
+    }
+    BUFFER[bufferIndex] = '\0';
 }

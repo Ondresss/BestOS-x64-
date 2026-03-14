@@ -7,36 +7,54 @@
 #include <fcntl.h>
 #include <stddef.h>
 #include <assert.h>
+#include <stdlib.h>
+
 # include "diskAccess.h"
-/*
- * Command line options
- *
- * We can't set default values for the char* fields here because
- * fuse_opt_parse would attempt to free() them when the user specifies
- * different values on the command line.
- */
-static struct options {
-        const char *filename;
-        const char *contents;
-        int show_help;
-} options;
- 
-#define OPTION(t, p)                           \
-    { t, offsetof(struct options, p), 1 }
-static const struct fuse_opt option_spec[] = {
-        OPTION("--name=%s", filename),
-        OPTION("--contents=%s", contents),
-        OPTION("-h", show_help),
-        OPTION("--help", show_help),
-        FUSE_OPT_END
-};
+
 
 static void set_context_by_path(const char *path) {
         char parentPath[256] = {0};
         getParentPath(path, parentPath);
         changeDirAbsolute_(parentPath);
 }
- 
+
+
+static int unlinkCallback(const char *path) {
+        set_context_by_path(path);
+        char FILENAME[256] = {0};
+        stringParseFilename(FILENAME,path);
+        delete_(FILENAME);
+        return 0;
+}
+
+static int rmDirCallback(const char *path) {
+        changeDirAbsolute_(path);
+        char DIRNAME[256] = {0};
+        stringParseFilename(DIRNAME,path);
+        rmCurrentDir_(DIRNAME);
+        return 0;
+}
+static int createCallback(const char *path, mode_t mode, struct fuse_file_info *fi) {
+        (void) mode; (void) fi;
+
+        set_context_by_path(path);
+        char FILENAME[256] = {0};
+        stringParseFilename(FILENAME,path);
+        create_(FILENAME);
+
+        return 0;
+}
+
+static int writeCallback(const char *path, const char *buf, size_t size,
+                      off_t offset, struct fuse_file_info *fi) {
+        (void) fi;
+        set_context_by_path(path);
+        char FILENAME[256] = {0};
+        stringParseFilename(FILENAME,path);
+        write_(FILENAME,buf,size);
+        return size;
+}
+
 static void *hello_init(struct fuse_conn_info *conn,
                         struct fuse_config *cfg)
 {
@@ -44,7 +62,18 @@ static void *hello_init(struct fuse_conn_info *conn,
         cfg->kernel_cache = 1;
         return NULL;
 }
- 
+
+
+static int utimensCallback(const char *path, const struct timespec tv[2],
+                         struct fuse_file_info *fi) {
+        (void) path; (void) tv; (void) fi;
+
+        return 0;
+}
+
+
+
+
 static int hello_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
 {
         (void) fi;
@@ -57,7 +86,9 @@ static int hello_getattr(const char *path, struct stat *stbuf, struct fuse_file_
         }
 
         set_context_by_path(path);
-        Fat16Entry entry = findEntryInCurrentDir(path);
+        char filenameOnly[256] = {0};
+        stringParseFilename(filenameOnly, path);
+        Fat16Entry entry = findEntryInCurrentDir(filenameOnly);
 
         if (entry.filename[0] == 0x00 || (unsigned char)entry.filename[0] == 0xE5) {
                 return -ENOENT;
@@ -81,33 +112,30 @@ static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         (void) offset;
         (void) fi;
         (void) flags;
+        filler(buf, ".", NULL, 0, 0);
+        filler(buf, "..", NULL, 0, 0);
 
         changeDirAbsolute_(path);
-        Fat16Entry entries[16] = {0};
+        Fat16Entry entries[32] = {0};
         int noEntries = getCurrentEntries(entries);
         for (int i = 0; i < noEntries; ++i) {
                 char filename[32] = {0};
                 stringFat16Format(filename,entries[i].filename,entries[i].ext);
-                fprintf(stderr,filename);
                 filler(buf,filename,NULL,0,FUSE_FILL_DIR_PLUS);
         }
         return 0;
 }
  
 static int hello_open(const char *path, struct fuse_file_info *fi) {
-        char parentPath[256];
-        getParentPath(path, parentPath);
-        changeDirAbsolute_(parentPath);
+        (void) fi;
+        set_context_by_path(path);
+        char filenameOnly[256] = {0};
+        stringParseFilename(filenameOnly, path);
+        Fat16Entry entry = findEntryInCurrentDir(filenameOnly);
 
-        Fat16Entry entry = findEntryInCurrentDir(path);
-
-        if (entry.filename[0] == 0x00 || entry.filename[0] == 0xE5) {
+        if (entry.filename[0] == 0x00 || (unsigned char)entry.filename[0] == 0xE5) {
                 return -ENOENT;
         }
-
-        if ((fi->flags & O_ACCMODE) != O_RDONLY)
-                return -EACCES;
-
         return 0;
 }
  
@@ -115,14 +143,24 @@ static int hello_read(const char *path, char *buf, size_t size, off_t offset,
                       struct fuse_file_info *fi) {
         (void) fi;
         set_context_by_path(path);
-        Fat16Entry entry = findEntryInCurrentDir(path);
+        char filenameOnly[256] = {0};
+        stringParseFilename(filenameOnly, path);
 
+        Fat16Entry entry = findEntryInCurrentDir(filenameOnly);
+
+        if (entry.filename[0] == 0x00 || (uint8_t)entry.filename[0] == 0xE5) {
+                return -ENOENT;
+        }
         if (offset >= entry.file_size) return 0;
         if (offset + size > entry.file_size) size = entry.file_size - offset;
-        char filename[13] = {0};
-        stringFat16Format(filename,entry.filename,entry.ext);
-        read_(filename,buf);
 
+        char* tempBuf = (char*) malloc(entry.file_size * sizeof(char));
+        char filenameFAT[13] = {0};
+        stringFat16Format(filenameFAT, entry.filename, entry.ext);
+
+        read_(filenameFAT, tempBuf);
+        memcpy(buf, tempBuf + offset, size);
+        free(tempBuf);
         return size;
 }
  
@@ -132,36 +170,18 @@ static const struct fuse_operations hello_oper = {
         .readdir        = hello_readdir,
         .open           = hello_open,
         .read           = hello_read,
+        .write          = writeCallback,
+        .create         = createCallback,
+        .utimens        = utimensCallback,
+        .unlink         = unlinkCallback,
+        .rmdir          = rmDirCallback
 };
- 
-static void show_help(const char *progname)
-{
-        printf("usage: %s [options] <mountpoint>\n\n", progname);
-        printf("File-system specific options:\n"
-               "    --name=<s>          Name of the \"hello\" file\n"
-               "                        (default: \"hello\")\n"
-               "    --contents=<s>      Contents \"hello\" file\n"
-               "                        (default \"Hello, World!\\n\")\n"
-               "\n");
-}
- 
+
 int main(int argc, char *argv[]) {
         int ret;
         printf("%d\n",currentDir.dirLBA);
         struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
         initFileSystem("./sd.img");
-        /* Set defaults -- we have to use strdup so that
-           fuse_opt_parse can free the defaults if other
-           values are specified */
-
-
-        /* When --help is specified, first print our own file-system
-           specific help text, then signal fuse_main to show
-           additional help (by adding `--help` to the options again)
-           without usage: line (by setting argv[0] to the empty
-           string) */
-
-
         ret = fuse_main(args.argc, args.argv, &hello_oper, NULL);
         fuse_opt_free_args(&args);
         return ret;
