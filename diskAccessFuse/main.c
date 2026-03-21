@@ -55,9 +55,8 @@ static int writeCallback(const char *path, const char *buf, size_t size,
         return size;
 }
 
-static void *hello_init(struct fuse_conn_info *conn,
-                        struct fuse_config *cfg)
-{
+static void *initCallback(struct fuse_conn_info *conn,
+                        struct fuse_config *cfg) {
         (void) conn;
         cfg->kernel_cache = 1;
         return NULL;
@@ -74,7 +73,7 @@ static int utimensCallback(const char *path, const struct timespec tv[2],
 
 
 
-static int hello_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
+static int getattrCallback(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
 {
         (void) fi;
         memset(stbuf, 0, sizeof(struct stat));
@@ -104,8 +103,7 @@ static int hello_getattr(const char *path, struct stat *stbuf, struct fuse_file_
         }
         return 0;
 }
-//DAVAT UMOUNT na adresari
-static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int readdirCallback(const char *path, void *buf, fuse_fill_dir_t filler,
                          off_t offset, struct fuse_file_info *fi,
                          enum fuse_readdir_flags flags)
 {
@@ -126,7 +124,7 @@ static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         return 0;
 }
  
-static int hello_open(const char *path, struct fuse_file_info *fi) {
+static int openCallback(const char *path, struct fuse_file_info *fi) {
         (void) fi;
         set_context_by_path(path);
         char filenameOnly[256] = {0};
@@ -139,7 +137,7 @@ static int hello_open(const char *path, struct fuse_file_info *fi) {
         return 0;
 }
  
-static int hello_read(const char *path, char *buf, size_t size, off_t offset,
+static int readCallback(const char *path, char *buf, size_t size, off_t offset,
                       struct fuse_file_info *fi) {
         (void) fi;
         set_context_by_path(path);
@@ -165,11 +163,11 @@ static int hello_read(const char *path, char *buf, size_t size, off_t offset,
 }
  
 static const struct fuse_operations hello_oper = {
-        .init           = hello_init,
-        .getattr        = hello_getattr,
-        .readdir        = hello_readdir,
-        .open           = hello_open,
-        .read           = hello_read,
+        .init           = initCallback,
+        .getattr        = getattrCallback,
+        .readdir        = readdirCallback,
+        .open           = openCallback,
+        .read           = readCallback,
         .write          = writeCallback,
         .create         = createCallback,
         .utimens        = utimensCallback,
