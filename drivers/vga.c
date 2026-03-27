@@ -52,8 +52,6 @@ void setCursor(int offset) {
 }
 void clearScreen(unsigned char color) {
     unsigned char* video_mem = (unsigned char*)0xB8000;
-    short column_count = 80;
-    short row_count = 25;
 
     for (int i = 0; i < 80 * 25; i++) {
         video_mem[i * 2] = ' ';
@@ -61,4 +59,10 @@ void clearScreen(unsigned char color) {
     }
 
     setCursor(0);
+}
+void clearLastCharacter(unsigned char color) {
+    int currentOffset = getCursor();
+    currentOffset-= 2;
+    setCharAtVideoMem(' ',currentOffset,color);
+    setCursor(currentOffset / 2);
 }

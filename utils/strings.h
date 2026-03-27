@@ -10,3 +10,6 @@ void memZero(char* dest,int len);
 int stringFindChar(const char* str,char c,bool direction,int skip);
 void stringParseFilename(char* BUFFER,const char* path);
 void memoryCopy(void *dest, const void *src, size_t n);
+int stringSplit(char* dest,char* src,char sep);
+int stringToInt(char* buf);
+unsigned int stringToHex(char* str);

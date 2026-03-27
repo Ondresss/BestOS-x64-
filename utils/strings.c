@@ -65,12 +65,10 @@ int unsignedIntToString(char* buf,unsigned int number){
 }
 
 unsigned char stringCompare(const char* str1,const char* str2) {
-    int i = 0;
-    while (str1[i] != '\0' && str2[i] != '\0') {
+    for (int i = 0; i <= stringLength(str1); ++i) {
         if (str1[i] != str2[i]) {
             return 1;
         }
-        i++;
     }
     return 0;
 }
@@ -154,4 +152,59 @@ void stringParseFilename(char* BUFFER, const char* path) {
         i++;
     }
     BUFFER[bufferIndex] = '\0';
+}
+
+int stringSplit(char* dest, char* src, char sep) {
+    static int nextTokenIndex = 0;
+    int destIndex = 0;
+
+    if (nextTokenIndex >= stringLength(src)) {
+        nextTokenIndex = 0;
+        return -1;
+    }
+
+    int i = nextTokenIndex;
+    while (src[i] != '\0' && src[i] != sep) {
+        dest[destIndex++] = src[i++];
+    }
+
+    dest[destIndex] = '\0';
+
+    if (src[i] == '\0') {
+        nextTokenIndex = i;
+    } else {
+        nextTokenIndex = i + 1;
+    }
+
+    return (destIndex > 0) ? nextTokenIndex : -1;
+}
+
+int stringToInt(char* buf) {
+    int num = 0;
+    int len = stringLength(buf);
+    for (int i = 0; i < len; ++i) {
+        if (buf[i] >= '0' && buf[i] <= '9') {
+            num*=10;
+            num+= buf[i] - '0';
+        }
+    }
+    return num;
+}
+
+unsigned int stringToHex(char* str) {
+    unsigned int val = 0;
+    int i = 0;
+    if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) i = 2;
+
+    while (str[i] != '\0') {
+        unsigned int byte = str[i];
+        if (byte >= '0' && byte <= '9') byte = byte - '0';
+        else if (byte >= 'a' && byte <= 'f') byte = byte - 'a' + 10;
+        else if (byte >= 'A' && byte <= 'F') byte = byte - 'A' + 10;
+        else break;
+
+        val = (val << 4) | (byte & 0xF);
+        i++;
+    }
+    return val;
 }

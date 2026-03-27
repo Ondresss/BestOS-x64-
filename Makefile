@@ -7,7 +7,7 @@ LDFLAGS = -m elf_i386 -Ttext 0x7E00 --oformat binary
 ASFLAGS = -f bin
 OBJFLAGS = -f elf32
 
-KERNEL_OBJS = kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o
+KERNEL_OBJS = kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o ide.o cli.o
 
 run: disk.img
 
@@ -19,6 +19,12 @@ boot.bin: fe-boot.asm
 
 serial.o: ./drivers/serial.o
 	$(CC) $(CFLAGS) ./drivers/serial.c -o serial.o
+ide.o: ./drivers/ide.o
+	$(CC) $(CFLAGS) ./drivers/ide.c -o ide.o
+
+cli.o: ./cli/cli.o
+	$(CC) $(CFLAGS) ./cli/cli.c -o cli.o
+
 keyboard.o: ./drivers/keyboard.o
 	$(CC) $(CFLAGS) ./drivers/keyboard.c -o keyboard.o
 
@@ -39,6 +45,8 @@ kernel.bin: $(KERNEL_OBJS)
 
 disk.img: boot.bin kernel.bin
 	cat boot.bin kernel.bin > disk.img
+	echo "DISK_OK" > test.txt
+	dd if=test.txt of=disk.img bs=512 seek=20 conv=notrunc
 
 clean:
 	rm -f *.bin *.o *.img ./arch/*.o ./drivers/*.o

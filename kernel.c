@@ -1,13 +1,12 @@
 #include "./drivers/vga.h"
 #include "./drivers/serial.h"
 #include "./drivers/keyboard.h"
-void displayChar(int x,int y,char c,unsigned char color) ;
+#include "./drivers/ide.h"
+#include "./cli/cli.h"
 void getCPUVendor(char* vendor);
-
 void main() {
     serial_init();
     char vendor[13] = {0};
-    unsigned char* video_mem = (unsigned char*)0xB8000;
     getCPUVendor(vendor);
     const char* line1 = " \\______   \\ ____   _______/  |_\\_____  \\  /   _____/ ";
     const char* line2 = "  |    |  _// __ \\ /  ___/\\   __\\/   |   \\ \\_____  \\  ";
@@ -24,16 +23,10 @@ void main() {
         displayString(ascii_art[i], GREEN_ON_BLACK);
         displayString("\n", 0);
     }
-    while (1) {
-        char c = keyboard_getchar();
-        if (c != 0) {
-            serial_putchar(c);
-            //displayString(&c, 0x0F);
-        }
-    }
-}
-void displayChar(int x,int y,char c,unsigned char color) {
-    unsigned char* video_mem = (unsigned char*)0xB8000;
-    video_mem[(y*80+x)*2] = c;
-    video_mem[(y*80+x)*2+1] = color;
+    displayString("<Testing VGA output>\n",0x0f);
+    displayString("<Testing SERIAL output>\n",0x0f);
+    serial_print("<Testing SERIAL output>\n");
+    displayString("<Testing ATA/IDE Reading sector 0...>\n",0x0f);
+    cliLoop();
+
 }

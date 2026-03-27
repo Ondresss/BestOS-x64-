@@ -8,9 +8,11 @@
 #define VGA_DATA_REGISTER 0x3d5
 #define VGA_CUR_LOW_REG 0x0f
 #define VGA_CUR_HIGH_REG 0x0e
-
+#define DARK_GREY 0x08
+#define LIGHT_RED 0x0C
 int getCursor();
 void setCharAtVideoMem(char c,int offset,unsigned char color);
 void displayString(char* str,unsigned char color);
 void setCursor(int offset);
 void clearScreen(unsigned char color);
+void clearLastCharacter(unsigned char color);

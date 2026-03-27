@@ -15,7 +15,7 @@ load_sector:
     xor ax, ax
     mov es, ax
     mov bx, 0x7e00
-    mov al, 10
+    mov al, 50
     mov ch, 0
     mov cl, 0x02
     mov dl, 0x80
