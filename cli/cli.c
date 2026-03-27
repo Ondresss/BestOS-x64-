@@ -81,52 +81,20 @@ void cliPrintCommand(Command* cmd) {
 void cliExecuteCommand(Command* cmd) {
     if (!stringCompare(cmd->name,"")) return;
     if (!stringCompare(cmd->name,"clear")) {
-        clearScreen(0x07);
+        clearCommand(cmd);
     }
     else if (!stringCompare(cmd->name,"read")) {
-        memZero((char*)&cliContext,sizeof(CLIContext));
-        int lba = -1;
-        if (stringFindChar(cmd->params[0],'x',true,0) != -1) {
-            lba = stringToHex(cmd->params[0]);
-        } else {
-            lba = stringToInt(cmd->params[0]);
-        }
-        ideReadSector(lba, cliContext.buffer);
-        displayString("DISK READ OK\n", WHITE_ON_BLACK);
-        displayString("READ CONTENT: \n",WHITE_ON_BLACK);
-        displayString(cliContext.buffer,DARK_GREY);
-        displayString("\n",WHITE_ON_BLACK);
+        readCommand(cmd);
     } else if (!stringCompare(cmd->name,"write")) {
-        int lba = -1;
-        if (stringFindChar(cmd->params[0],'x',true,0) != -1) {
-            lba = stringToHex(cmd->params[0]);
-        } else {
-            lba = stringToInt(cmd->params[0]);
-        }
-        ideWriteSector(lba, cliContext.buffer);
-        displayString("WROTE TO THE SECTOR ", WHITE_ON_BLACK);
-        displayString(cmd->params[0],WHITE_ON_BLACK);
-        displayString("\n",WHITE_ON_BLACK);
-
+        writeCommand(cmd);
     } else if (!stringCompare(cmd->name,"load")) {
-        if (cmd->noParams < 2) {
-            displayString("USAGE: load <lba> <address>\n", DARK_GREY);
-            return;
-        }
-        unsigned int lba = stringToInt(cmd->params[0]);
-        unsigned int raw_addr = stringToHex(cmd->params[1]);
-        void* target_ptr = (void*)raw_addr;
-
-        if (ideReadSector(lba, target_ptr) == 0) {
-            displayString("Sector load to address: ", WHITE_ON_BLACK);
-            displayString(cmd->params[1], 0x0A);
-            displayString("\n", 0);
-        } else {
-            displayString("Error while reading from the disk!\n", 0x0C);
-        }
+        loadCommand(cmd);
+    } else if (!stringCompare(cmd->name,"hexdump")) {
+        hexDumpCommand(cmd);
+    }else if (!stringCompare(cmd->name,"run")) {
+        runCommand(cmd);
     }
     else {
-        displayString("UNRECOGNIZED COMMAND\n", LIGHT_RED);
+        displayString("UNRECOGNIZED COMMAND!",LIGHT_RED);
     }
-
 }

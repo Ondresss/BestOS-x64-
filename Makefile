@@ -7,7 +7,7 @@ LDFLAGS = -m elf_i386 -Ttext 0x7E00 --oformat binary
 ASFLAGS = -f bin
 OBJFLAGS = -f elf32
 
-KERNEL_OBJS = kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o ide.o cli.o
+KERNEL_OBJS = kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o ide.o cli.o commands.o
 
 run: disk.img
 
@@ -24,6 +24,8 @@ ide.o: ./drivers/ide.o
 
 cli.o: ./cli/cli.o
 	$(CC) $(CFLAGS) ./cli/cli.c -o cli.o
+cli.o: ./cli/commands.o
+	$(CC) $(CFLAGS) ./cli/commands.c -o commands.o
 
 keyboard.o: ./drivers/keyboard.o
 	$(CC) $(CFLAGS) ./drivers/keyboard.c -o keyboard.o
