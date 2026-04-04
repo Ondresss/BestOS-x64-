@@ -5,28 +5,34 @@
 CurrentDir currentDir;
 FileSystem fileSystem;
 
+void getCurrentDir(char * buffer) {
+  if (currentDir.dirLBA == -1) {
 
+      stringCat(buffer,"/");
+  } else {
+      stringCat(buffer,currentDir.filename);
+  }
+}
 
-void initFileSystem(const char* filename_) {
+void initFileSystem() {
   uint16_t fatTable[128 * 1024] = {0};
-  const int fd = open(filename_,O_RDWR);
-  fileSystem.fd = fd;
   uint8_t sectorBuffer[512] = {0};
-  ataReadSector(fileSystem.fd,0,sectorBuffer);
+  ataReadSector(0,sectorBuffer);
   PartitionTable* ptTmp = (PartitionTable*)(sectorBuffer + 0x1BE);
   fileSystem.pt[0] = *ptTmp;
-  ataReadSector(fileSystem.fd,fileSystem.pt[0].start_sector,sectorBuffer);
+  ataReadSector(fileSystem.pt[0].start_sector,sectorBuffer);
   Fat16BootSector* bsTmp = (Fat16BootSector*)sectorBuffer;
   fileSystem.bs = *bsTmp;
-  readFat1Table(fileSystem.fd,fatTable,&fileSystem.bs,fileSystem.pt[0].start_sector);
+  readFat1Table(fatTable,&fileSystem.bs,fileSystem.pt[0].start_sector);
   unsigned int rootDirLBA = (fileSystem.pt[0].start_sector + fileSystem.bs.reserved_sectors) + fileSystem.bs.number_of_fats * fileSystem.bs.fat_size_sectors;
   unsigned int rootDirSectors = (fileSystem.bs.root_dir_entries * sizeof(Fat16Entry)) / 512;
   fileSystem.rootDirLBA = rootDirLBA;
   fileSystem.rootDirSectors = rootDirSectors;
-  readFat1Table(fileSystem.fd,fileSystem.fatTable,&fileSystem.bs,fileSystem.pt[0].start_sector);
+  readFat1Table(fileSystem.fatTable,&fileSystem.bs,fileSystem.pt[0].start_sector);
 
   currentDir.dirLBA = -1;
   memZero(currentDir.filename,256);
+  stringCat(currentDir.filename,"/");
 }
 
 
@@ -39,7 +45,7 @@ void changeDir(const char* dirName) {
   }
   uint8_t sectorBuffer[512] = {0};
   for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
-    ataReadSector(fileSystem.fd, fileSystem.rootDirLBA + s, sectorBuffer);
+    ataReadSector(fileSystem.rootDirLBA + s, sectorBuffer);
 
     int noOfEntries = 512 / sizeof(Fat16Entry);
 
@@ -70,7 +76,7 @@ void changeDir(const char* dirName) {
 void printTree() {
   uint8_t sectorBuffer[512] = {0};
   for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
-    ataReadSector(fileSystem.fd, fileSystem.rootDirLBA + s, sectorBuffer);
+    ataReadSector(fileSystem.rootDirLBA + s, sectorBuffer);
 
     int noOfEntries = 512 / sizeof(Fat16Entry);
 
@@ -131,7 +137,7 @@ void printTree() {
 void list_(const char* filename_) {
   uint8_t sectorBuffer[512] = {0};
   for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
-    ataReadSector(fileSystem.fd, fileSystem.rootDirLBA + s, sectorBuffer);
+    ataReadSector(fileSystem.rootDirLBA + s, sectorBuffer);
 
     int noOfEntries = 512 / sizeof(Fat16Entry);
 
@@ -191,12 +197,12 @@ void write_(const char* filename_,const char* BUFF,size_t size) {
     if (BUFF) {
       if (remainingBytes <= 0) break;
       bytesRead = remainingBytes > 512 ? 512 : remainingBytes;
-      memcpy(BUFFER,BUFF,bytesRead);
+      memoryCopy(BUFFER,BUFF,bytesRead);
       BUFF += bytesRead;
       remainingBytes -= bytesRead;
     } else
     {
-      bytesRead = (int)read(0, BUFFER, 512);
+      //bytesRead = (int)read(0, BUFFER, 512);
     }
     if (bytesRead <= 0) break;
 
@@ -230,7 +236,7 @@ void read_(const char* filename_,char* BUFFER) {
   uint8_t sectorBuffer[512] = {0};
   if (currentDir.dirLBA != -1) {
     for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
-      ataReadSector(fileSystem.fd, currentDir.dirLBA + i, sectorBuffer);
+      ataReadSector(currentDir.dirLBA + i, sectorBuffer);
 
       for (int j = 0; j < 16; j++) {
         Fat16Entry* entry = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
@@ -239,7 +245,6 @@ void read_(const char* filename_,char* BUFFER) {
 
         char BUF[255] = {0};
         stringFat16Format(BUF,entry->filename,entry->ext);
-
         if (!stringCompare(BUF, filename_)) {
           int dataStartLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
           readFileContent(entry,dataStartLBA,BUFFER);
@@ -249,7 +254,7 @@ void read_(const char* filename_,char* BUFFER) {
     return;
   }
   for (int s = 0; s < fileSystem.rootDirSectors; s++) {
-    ataReadSector(fileSystem.fd, fileSystem.rootDirLBA + s, sectorBuffer);
+    ataReadSector(fileSystem.rootDirLBA + s, sectorBuffer);
 
     int noOfEntries = 512 / sizeof(Fat16Entry);
 
@@ -261,7 +266,7 @@ void read_(const char* filename_,char* BUFFER) {
 
       char BUF[255] = {0};
       stringFat16Format(BUF,entryTmp->filename,entryTmp->ext);
-
+      serial_print(BUF);
       if (!stringCompare(BUF, filename_)) {
          int dataStartLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
          readFileContent(entryTmp,dataStartLBA,BUFFER);
@@ -286,7 +291,7 @@ void findFirstFreeEntry(const char* fileName, int startingCluster, uint32_t file
   }
 
   for (uint32_t s = 0; s < sectorsToRead; s++) {
-    if (ataReadSector(fileSystem.fd, startLBA + s, sectorBuffer) != 0) continue;
+    if (ataReadSector(startLBA + s, sectorBuffer) != 0) continue;
 
     for (int j = 0; j < 16; j++) {
       Fat16Entry* entry = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
@@ -354,7 +359,7 @@ int getCurrentEntries(Fat16Entry* arr) {
   int entryIndex = 0;
   if (currentDir.dirLBA == -1) {
     for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
-      ataReadSector(fileSystem.fd,fileSystem.rootDirLBA + s, sectorBuffer);
+      ataReadSector(fileSystem.rootDirLBA + s, sectorBuffer);
       int noOfEntries = 512 / sizeof(Fat16Entry);
 
       for (int i = 0; i < noOfEntries; i++) {
@@ -368,7 +373,7 @@ int getCurrentEntries(Fat16Entry* arr) {
     return entryIndex;
   }
   for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
-    ataReadSector(fileSystem.fd, currentDir.dirLBA + i, sectorBuffer);
+    ataReadSector(currentDir.dirLBA + i, sectorBuffer);
 
     for (int j = 0; j < 16; j++) {
       Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));

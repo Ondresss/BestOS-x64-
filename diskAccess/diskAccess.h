@@ -1,12 +1,9 @@
 #include "fat.h"
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdint.h>
-#include "strings.h"
+#include "../utils/strings.h"
 #include "diskAccessUtils.h"
 #pragma once
 
-void initFileSystem(const char* filename_);
+void initFileSystem();
 
 void printTree();
 void read_(const char* filename_,char* BUFFER);
@@ -22,4 +19,8 @@ int getCurrentEntries(Fat16Entry* arr);
 Fat16Entry findEntryInCurrentDir(const char* path);
 void getParentPath(const char *path, char *parent);
 void findFirstFreeEntry(const char* fileName, int startingCluster, uint32_t fileSize);
+
+void getCurrentDir(char * buffer);
+
+
 

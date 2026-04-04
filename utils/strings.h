@@ -13,3 +13,4 @@ void memoryCopy(void *dest, const void *src, size_t n);
 int stringSplit(char* dest,char* src,char sep);
 int stringToInt(char* buf);
 unsigned int stringToHex(char* str);
+void *memset(void *ptr, int value, size_t num);

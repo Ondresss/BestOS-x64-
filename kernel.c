@@ -3,9 +3,11 @@
 #include "./drivers/keyboard.h"
 #include "./drivers/ide.h"
 #include "./cli/cli.h"
+#include  "./diskAccess/diskAccess.h"
 void getCPUVendor(char* vendor);
 void main() {
     serial_init();
+    initFileSystem();
     char vendor[13] = {0};
     getCPUVendor(vendor);
     const char* line1 = " \\______   \\ ____   _______/  |_\\_____  \\  /   _____/ ";

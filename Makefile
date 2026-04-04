@@ -7,10 +7,13 @@ LDFLAGS = -m elf_i386 -Ttext 0x7E00 --oformat binary
 ASFLAGS = -f bin
 OBJFLAGS = -f elf32
 
-KERNEL_OBJS = kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o ide.o cli.o commands.o
+KERNEL_OBJS = kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o ide.o cli.o commands.o diskAccess.o diskAccessUtils.o
 
-run: disk.img
 
+diskAccess.o: ./diskAccess/diskAccess.o
+	$(CC) $(CFLAGS) ./diskAccess/diskAccess.c -o diskAccess.o
+diskAccessUtils.o: ./diskAccess/diskAccessUtils.o
+	$(CC) $(CFLAGS) ./diskAccess/diskAccessUtils.c -o diskAccessUtils.o
 boot.bin: fe-boot.asm
 	$(AS) $(ASFLAGS) fe-boot.asm -o boot.bin
 
@@ -24,7 +27,7 @@ ide.o: ./drivers/ide.o
 
 cli.o: ./cli/cli.o
 	$(CC) $(CFLAGS) ./cli/cli.c -o cli.o
-cli.o: ./cli/commands.o
+commands.o: ./cli/commands.o
 	$(CC) $(CFLAGS) ./cli/commands.c -o commands.o
 
 keyboard.o: ./drivers/keyboard.o
@@ -45,10 +48,14 @@ functions.o: functions.asm
 kernel.bin: $(KERNEL_OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $(KERNEL_OBJS)
 
+
 disk.img: boot.bin kernel.bin
-	cat boot.bin kernel.bin > disk.img
-	echo "DISK_OK" > test.txt
-	dd if=test.txt of=disk.img bs=512 seek=20 conv=notrunc
+	cp sd.img disk.img
+	dd if=boot.bin of=disk.img bs=1 count=446 conv=notrunc
+	dd if=kernel.bin of=disk.img bs=512 seek=1 conv=notrunc
+
+run: disk.img
+	qemu-system-x86_64 -drive file=disk.img,format=raw,index=0,media=disk -serial stdio
 
 clean:
 	rm -f *.bin *.o *.img ./arch/*.o ./drivers/*.o

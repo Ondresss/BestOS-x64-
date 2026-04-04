@@ -8,6 +8,7 @@
 #define ATA_DRIVE_SEL   0x1F6
 #define ATA_COMMAND     0x1F7
 #define ATA_STATUS      0x1F7
-int ideReadSector(unsigned int lba, void *buffer);
-int ideWriteSector(unsigned int lba, void *buffer);
+int ataReadSector(unsigned int lba, void *buffer);
+int ataWriteSector(unsigned int lba, void *buffer);
+
 void ideIsReady();

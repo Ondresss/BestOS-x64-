@@ -4,6 +4,7 @@
 #include "../drivers/keyboard.h"
 #include "../drivers/ide.h"
 #include "../drivers/serial.h"
+#include "../diskAccess/diskAccess.h"
 typedef struct {
     char name[64];
     char params[16][64];
@@ -12,6 +13,7 @@ typedef struct {
 
 typedef struct {
     char buffer[513];
+    char currentDir[513];
 }CLIContext;
 
 extern CLIContext cliContext;
@@ -22,6 +24,8 @@ void clearCommand(Command* cmd);
 void loadCommand(Command* cmd);
 void hexDumpCommand(Command* cmd);
 void runCommand(Command* cmd);
-
+void helpCommand(Command* cmd);
+void catCommand(Command* cmd);
+void cdCommand(Command* cmd);
 static void printAddrInHex(unsigned int addr);
 static void printHexByte(unsigned char b);

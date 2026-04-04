@@ -35,6 +35,9 @@ void cliLoop() {
     while (1) {
         memZero((char*)&currentCommand,sizeof(Command));
         memZero(BUFFER,1024);
+        char currentDirBuf[256] = {0};
+        getCurrentDir(currentDirBuf);
+        displayString(currentDirBuf,GREEN_ON_BLACK);
         displayString("$ ",GREEN_ON_BLACK);
         cliReadline(BUFFER, 77);
         cliParse(BUFFER,&currentCommand);
@@ -93,8 +96,16 @@ void cliExecuteCommand(Command* cmd) {
         hexDumpCommand(cmd);
     }else if (!stringCompare(cmd->name,"run")) {
         runCommand(cmd);
+    } else if (!stringCompare(cmd->name,"help")) {
+        helpCommand(cmd);
+    }
+    else if (!stringCompare(cmd->name,"cd")) {
+        cdCommand(cmd);
+    }
+    else if (!stringCompare(cmd->name,"cat")) {
+        catCommand(cmd);
     }
     else {
-        displayString("UNRECOGNIZED COMMAND!",LIGHT_RED);
+        displayString("UNRECOGNIZED COMMAND!\n",LIGHT_RED);
     }
 }

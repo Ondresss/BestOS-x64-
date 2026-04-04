@@ -1,8 +1,6 @@
 #include "diskAccessUtils.h"
 
-void console_write(const char *buf, uint32_t len) {
-    write(1,buf,len);
-}
+
 int changeDirRecursive(const char* dirName,const Fat16Entry* dirEntry,int dataLBA) {
     int startingDirCluster = dirEntry->starting_cluster;
     if (startingDirCluster == 0) return 0;
@@ -11,7 +9,7 @@ int changeDirRecursive(const char* dirName,const Fat16Entry* dirEntry,int dataLB
     unsigned int clusterStart = dataLBA + (startingDirCluster - 2) * fileSystem.bs.sectors_per_cluster;
 
     for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
-        ataReadSector(fileSystem.fd, clusterStart + i, sectorBuffer);
+        ataReadSector(clusterStart + i, sectorBuffer);
 
         for (int j = 0; j < 16; j++) {
             Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
@@ -48,14 +46,14 @@ Date parseDate(uint16_t date) {
     return date_;
 }
 
-void readFat1Table(int fd, uint16_t* table, const Fat16BootSector* bs, uint32_t pos) {
+void readFat1Table(uint16_t* table, const Fat16BootSector* bs, uint32_t pos) {
     uint8_t sectorBuffer[512];
     uint32_t fat1Start = pos + bs->reserved_sectors;
 
     uint8_t* tableBytePtr = (uint8_t*)table;
 
     for (uint32_t i = 0; i < bs->fat_size_sectors; ++i) {
-        if (ataReadSector(fd, fat1Start + i, sectorBuffer) == 0) {
+        if (ataReadSector(fat1Start + i, sectorBuffer) == 0) {
             for (int j = 0; j < 512; j++) {
                 tableBytePtr[(i * 512) + j] = sectorBuffer[j];
             }
@@ -64,43 +62,25 @@ void readFat1Table(int fd, uint16_t* table, const Fat16BootSector* bs, uint32_t 
 }
 
 
-int ataReadSector(int fd, uint32_t lba, uint8_t *buffer) {
-    unsigned long long offset = (unsigned long long)lba * 512;
-
-    if (lseek(fd, offset, SEEK_SET) == -1) {
-        return -1;
-    }
-
-    if (read(fd, buffer, 512) != 512) {
-        return -1;
-    }
-
-    return 0;
-}
-
-void ataWriteSector(uint32_t lba, uint8_t *buffer) {
-    lseek(fileSystem.fd, lba * 512, SEEK_SET);
-    write(fileSystem.fd,buffer,512);
-}
-
-
 void readFileContent(const Fat16Entry* entry, unsigned int dataAreaLBA,char* BUFFER) {
     uint16_t currentCluster = entry->starting_cluster;
+    char NAME[124] = {0};
+    stringFat16Format(NAME,entry->filename,entry->ext);
+    serial_print(NAME);
     uint8_t sectorBuffer[512] = {0};
     uint32_t remainingBytes = entry->file_size;
-
     while (currentCluster < 0xFFF8 && remainingBytes > 0) {
         unsigned int clusterStart = dataAreaLBA + (currentCluster - 2) * fileSystem.bs.sectors_per_cluster;
 
         for (int i = 0; i < fileSystem.bs.sectors_per_cluster && remainingBytes > 0; ++i) {
-            ataReadSector(fileSystem.fd, clusterStart + i, sectorBuffer);
+            ataReadSector(clusterStart + i, sectorBuffer);
             uint32_t bytesToWrite = (remainingBytes > 512) ? 512 : remainingBytes;
             if(BUFFER) {
                 memoryCopy(BUFFER,sectorBuffer,bytesToWrite);
                 BUFFER+=bytesToWrite;
             } else
             {
-                write(1,sectorBuffer,bytesToWrite);
+                console_write((char*)sectorBuffer,bytesToWrite);
             }
 
             remainingBytes -= bytesToWrite;
@@ -119,7 +99,7 @@ void printDirRecursive(const Fat16Entry* dirEntry, char* padding, int dataLBA) {
     unsigned int clusterStart = dataLBA + (startingDirCluster - 2) * fileSystem.bs.sectors_per_cluster;
 
     for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
-        ataReadSector(fileSystem.fd, clusterStart + i, sectorBuffer);
+        ataReadSector(clusterStart + i, sectorBuffer);
 
         for (int j = 0; j < 16; j++) {
             Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
@@ -187,7 +167,7 @@ Fat16Entry findEntryAndErase(const char* fileName) {
     if (currentDir.dirLBA != -1) {
 
         for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
-            ataReadSector(fileSystem.fd, currentDir.dirLBA + i, sectorBuffer);
+            ataReadSector(currentDir.dirLBA + i, sectorBuffer);
 
             for (int j = 0; j < 16; j++) {
                 Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
@@ -214,7 +194,7 @@ Fat16Entry findEntryAndErase(const char* fileName) {
 
 
     for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
-        ataReadSector(fileSystem.fd,fileSystem.rootDirLBA + s, sectorBuffer);
+        ataReadSector(fileSystem.rootDirLBA + s, sectorBuffer);
         int noOfEntries = 512 / sizeof(Fat16Entry);
 
         for (int i = 0; i < noOfEntries; i++) {
@@ -245,7 +225,7 @@ Fat16Entry findEntryAndEraseRecursive(const char* fileName,const Fat16Entry* ent
     Fat16Entry entryCopy;
     memZero((char*)&entryCopy,sizeof(entryCopy));
     for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
-        ataReadSector(fileSystem.fd, clusterStart + i, sectorBuffer);
+        ataReadSector(clusterStart + i, sectorBuffer);
 
         for (int j = 0; j < 16; j++) {
             Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
@@ -289,7 +269,7 @@ void changeDirIterative(const char* targetName) {
     }
 
     for (uint32_t s = 0; s < sectorsToRead; s++) {
-        ataReadSector(fileSystem.fd, startLBA + s, sectorBuffer);
+        ataReadSector(startLBA + s, sectorBuffer);
         for (int i = 0; i < 16; i++) {
             Fat16Entry* entry = (Fat16Entry*)(sectorBuffer + i * sizeof(Fat16Entry));
 

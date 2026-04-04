@@ -1,8 +1,13 @@
 #pragma once
-#include "strings.h"
+#include "../utils/strings.h"
+#include "../drivers/ide.h"
+#include  "../drivers/vga.h"
 #include "fat.h"
-#include <stdint.h>
-#include <unistd.h>
+#include  "../drivers/serial.h"
+
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+typedef unsigned char uint8_t;
 typedef struct
 {
     unsigned int day;
@@ -21,19 +26,16 @@ typedef struct {
     unsigned int rootDirLBA;
     unsigned int rootDirSectors;
     uint16_t fatTable[128 * 1024];
-    int fd;
 } FileSystem;
 
 extern FileSystem fileSystem;
 extern CurrentDir currentDir;
 
-void console_write(const char *buf, uint32_t len);
+
 
 int changeDirRecursive(const char* dirName,const Fat16Entry* dirEntry,int dataLBA);
 Date parseDate(uint16_t date);
-void readFat1Table(int fd, uint16_t* table, const Fat16BootSector* bs, uint32_t pos);
-int ataReadSector(int fd, uint32_t lba, uint8_t *buffer);
-void ataWriteSector(uint32_t lba, uint8_t *buffer);
+void readFat1Table(uint16_t* table, const Fat16BootSector* bs, uint32_t pos);
 void readFileContent(const Fat16Entry* entry, unsigned  int dataAreaLBA,char* BUFFER);
 void printDirRecursive(const Fat16Entry* dirEntry,char* padding,int dataLBA);
 int findFreeCluster();

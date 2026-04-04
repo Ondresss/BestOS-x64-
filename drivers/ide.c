@@ -15,7 +15,7 @@ void ideSetAddress(unsigned int lba) {
     portByteOut(ATA_LBA_MID,  (unsigned char)(lba >> 8));
     portByteOut(ATA_LBA_HIGH, (unsigned char)(lba >> 16));
 }
-int ideReadSector(unsigned int lba, void *buffer) {
+int ataReadSector(unsigned int lba, void *buffer) {
     portByteOut(ATA_DRIVE_SEL, 0xE0 | ((lba >> 24) & 0x0F));
 
     for(int i=0; i<4; i++) portByteIn(ATA_STATUS);
@@ -40,7 +40,7 @@ int ideReadSector(unsigned int lba, void *buffer) {
 
     return 0;
 }
-int ideWriteSector(unsigned int lba, void *buffer) {
+int ataWriteSector(unsigned int lba, void *buffer) {
     portByteOut(ATA_DRIVE_SEL, 0xE0 | ((lba >> 24) & 0x0F));
     for(int i = 0; i < 4; i++) portByteIn(ATA_STATUS);
 

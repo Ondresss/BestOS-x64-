@@ -8,7 +8,7 @@ void readCommand(Command* cmd) {
     } else {
         lba = stringToInt(cmd->params[0]);
     }
-    ideReadSector(lba, cliContext.buffer);
+    ataReadSector(lba, cliContext.buffer);
     displayString("DISK READ OK\n", WHITE_ON_BLACK);
     displayString("READ CONTENT: \n",WHITE_ON_BLACK);
     displayString(cliContext.buffer,DARK_GREY);
@@ -21,7 +21,7 @@ void writeCommand(Command* cmd) {
     } else {
         lba = stringToInt(cmd->params[0]);
     }
-    ideWriteSector(lba, cliContext.buffer);
+    ataWriteSector(lba, cliContext.buffer);
     displayString("WROTE TO THE SECTOR ", WHITE_ON_BLACK);
     displayString(cmd->params[0],WHITE_ON_BLACK);
     displayString("\n",WHITE_ON_BLACK);
@@ -39,7 +39,7 @@ void loadCommand(Command* cmd)  {
     unsigned int raw_addr = stringToHex(cmd->params[1]);
     void* target_ptr = (void*)raw_addr;
 
-    if (ideReadSector(lba, target_ptr) == 0) {
+    if (ataReadSector(lba, target_ptr) == 0) {
         displayString("Sector load to address: ", WHITE_ON_BLACK);
         displayString(cmd->params[1], 0x0A);
         displayString("\n", 0);
@@ -51,8 +51,8 @@ void loadCommand(Command* cmd)  {
 void printAddrInHex(unsigned int addr) {
     const char chars[] = "0123456789ABCDEF";
     for (int i = 7; i >= 0; i--) {
-        char str[] = {chars[(addr >> ( (7-i) * 4)) & 0x0F],'\0'};
-        displayString(str,WHITE_ON_BLACK);
+        char str[] = {chars[(addr >> (i * 4)) & 0x0F], '\0'};
+        displayString(str, WHITE_ON_BLACK);
     }
 }
 
@@ -110,4 +110,15 @@ void runCommand(Command* cmd) {
     unsigned int addr = stringToHex(cmd->params[0]);
     f = (void (*)(void))addr;
     f();
+}
+void helpCommand(Command* cmd) {
+    displayString("Commands: help, clear, read, write, load, run, hexdump\n", 0x07);
+}
+
+void catCommand(Command* cmd) {
+    read_(cmd->params[0],0);
+    displayString("\n",WHITE_ON_BLACK);
+}
+void cdCommand(Command* cmd) {
+    changeDirAbsolute_(cmd->params[0]);
 }
