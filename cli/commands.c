@@ -122,3 +122,14 @@ void catCommand(Command* cmd) {
 void cdCommand(Command* cmd) {
     changeDirAbsolute_(cmd->params[0]);
 }
+
+void lsCommand(Command* cmd) {
+    list_();
+    displayString("\n",WHITE_ON_BLACK);
+}
+
+void treeCommand(Command* cmd) {
+    printTree();
+}
+
+

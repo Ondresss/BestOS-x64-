@@ -84,3 +84,21 @@ void console_write(const char *str, unsigned int len) {
     checkForScrolling(&offset);
     setCursor(offset / 2);
 }
+
+void console_write_color(const char *str, unsigned int len,unsigned char color) {
+    int offset = getCursor();
+    int i = 0;
+    while (str[i] != '\0' && i < len) {
+        if (str[i] == '\n') {
+            int row = offset / 160;
+            offset = (row + 1) * 160;
+            ++i;
+            continue;
+        }
+        setCharAtVideoMem(str[i],offset,color);
+        offset+=2;
+        ++i;
+    }
+    checkForScrolling(&offset);
+    setCursor(offset / 2);
+}

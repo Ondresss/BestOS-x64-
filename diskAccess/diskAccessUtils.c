@@ -92,48 +92,50 @@ void readFileContent(const Fat16Entry* entry, unsigned int dataAreaLBA,char* BUF
 
 
 void printDirRecursive(const Fat16Entry* dirEntry, char* padding, int dataLBA) {
-    int startingDirCluster = dirEntry->starting_cluster;
-    if (startingDirCluster == 0) return;
+    uint16_t startingDirCluster = dirEntry->starting_cluster;
+    if (startingDirCluster < 2) return;
 
     uint8_t sectorBuffer[512];
     unsigned int clusterStart = dataLBA + (startingDirCluster - 2) * fileSystem.bs.sectors_per_cluster;
 
     for (int i = 0; i < fileSystem.bs.sectors_per_cluster; ++i) {
-        ataReadSector(clusterStart + i, sectorBuffer);
+        if (ataReadSector(clusterStart + i, sectorBuffer) != 0) break;
 
         for (int j = 0; j < 16; j++) {
             Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
 
             if (entryTmp->filename[0] == 0x00) return;
-            if (entryTmp->filename[0] == 0xE5) continue;
-
+            if ((uint8_t)entryTmp->filename[0] == 0xE5) continue;
             if (entryTmp->filename[0] == '.') continue;
 
             char BUF[13] = {0};
             stringFat16Format(BUF, entryTmp->filename, entryTmp->ext);
 
-            console_write(padding, stringLength(padding));
-            console_write("|-- ", 4);
-            console_write(BUF, stringLength(BUF));
+            console_write_color(padding, stringLength(padding), 0x08);
+            console_write_color("|-- ", 4, 0x08);
 
             if (entryTmp->attributes & 0x10) {
-                console_write(" <DIR>\n", 7);
+                console_write_color("<DIR> ", 6, 0x0E);
+                console_write_color(BUF, stringLength(BUF), 0x0B);
+                console_write_color("\n", 1, 0x0F);
 
-                char nextPadding[256];
-                stringCat(nextPadding, "    ");
+                char nextPadding[64] = {0};
+                stringCat(nextPadding, padding);
+                stringCat(nextPadding, "|   ");
 
                 printDirRecursive(entryTmp, nextPadding, dataLBA);
             } else {
-                char filesizeStr[20];
+                console_write_color(BUF, stringLength(BUF), 0x0F);
+
+                char filesizeStr[20] = {0};
                 int fileLen = unsignedIntToString(filesizeStr, entryTmp->file_size);
-                console_write(" (", 2);
-                console_write(filesizeStr, fileLen);
-                console_write(" bytes)\n", 8);
+                console_write_color(" (", 2, 0x07);
+                console_write_color(filesizeStr, fileLen, 0x0A);
+                console_write_color(" B)\n", 4, 0x07);
             }
         }
     }
 }
-
 int findFreeCluster() {
     int maxFatIndex = (fileSystem.bs.fat_size_sectors * 512) / 2;
     for (int i = 2; i < maxFatIndex; ++i) {

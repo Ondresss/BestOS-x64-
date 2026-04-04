@@ -74,115 +74,103 @@ void changeDir(const char* dirName) {
 
 
 void printTree() {
-  uint8_t sectorBuffer[512] = {0};
-  for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
-    ataReadSector(fileSystem.rootDirLBA + s, sectorBuffer);
+    uint8_t sectorBuffer[512] = {0};
+    for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
+        ataReadSector(fileSystem.rootDirLBA + s, sectorBuffer);
+        int noOfEntries = 512 / sizeof(Fat16Entry);
 
-    int noOfEntries = 512 / sizeof(Fat16Entry);
+        for (int i = 0; i < noOfEntries; i++) {
+            Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + i * sizeof(Fat16Entry));
 
-    for (int i = 0; i < noOfEntries; i++) {
-      Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + i * sizeof(Fat16Entry));
+            if (entryTmp->filename[0] == 0x00) return;
+            if (entryTmp->filename[0] == 0xE5) continue;
 
-      if (entryTmp->filename[0] == 0x00) return;
-      if (entryTmp->filename[0] == 0xE5) continue;
+            char BUF[255] = {0};
+            stringFat16Format(BUF, entryTmp->filename, entryTmp->ext);
+            Date date = parseDate(entryTmp->modify_date);
+            char day[10], month[10], year[10], filesize[20];
 
-      char BUF[255] = {0};
-      stringFat16Format(BUF,entryTmp->filename,entryTmp->ext);
-      Date date = parseDate(entryTmp->modify_date);
-      char day[10], month[10], year[10], filesize[20];
-      char space = ' ';
-      char dot = '.';
-      char zero = '0';
+            if (date.day < 10) console_write_color("0", 1, 0x08);
+            int dayLen = unsignedIntToString(day, date.day);
+            console_write_color(day, dayLen, 0x08);
+            console_write_color(".", 1, 0x08);
 
-      if (date.day < 10) console_write(&zero, 1);
-      int dayLen = unsignedIntToString(day, date.day);
-      console_write(day, dayLen);
-      console_write(&dot, 1);
+            if (date.month < 10) console_write_color("0", 1, 0x08);
+            int monthLen = unsignedIntToString(month, date.month);
+            console_write_color(month, monthLen, 0x08);
+            console_write_color(".", 1, 0x08);
 
-      if (date.month < 10) console_write(&zero, 1);
-      int monthLen = unsignedIntToString(month, date.month);
-      console_write(month, monthLen);
-      console_write(&dot, 1);
+            int yearLen = unsignedIntToString(year, date.year);
+            console_write_color(year, yearLen, 0x08);
+            console_write_color("  ", 2, 0x07);
 
-      int yearLen = unsignedIntToString(year, date.year);
-      console_write(year, yearLen);
-      console_write("  ", 2);
+            if (entryTmp->attributes & 0x10) {
+              console_write("<DIR>          ", 15);
+              char PADDING[1024] = {0};
+              stringCat(PADDING,"                                    ");
+              int dataStartLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
+              char filesize[200] = {0};
+              unsigned int fileLen = unsignedIntToString(filesize, entryTmp->file_size);
+              console_write(filesize, fileLen);
+              console_write("  ", 2);
+              console_write(BUF, stringLength(BUF));
+              console_write("\n", 1);
+              printDirRecursive(entryTmp,PADDING,dataStartLBA);
+            } else {
+                int fileLen = unsignedIntToString(filesize, entryTmp->file_size);
 
-      if (entryTmp->attributes & 0x10) {
-        console_write("<DIR>          ", 15);
-        char PADDING[1024 * 128] = {0};
-        stringCat(PADDING,"                                    ");
-        int dataStartLBA = fileSystem.rootDirLBA + fileSystem.rootDirSectors;
-        char filesize[200] = {0};
-        unsigned int fileLen = unsignedIntToString(filesize, entryTmp->file_size);
-        console_write(filesize, fileLen);
-        console_write("  ", 2);
-        console_write(BUF, stringLength(BUF));
-        console_write("\n", 1);
-        printDirRecursive(entryTmp,PADDING,dataStartLBA);
-      } else {
-        int fileLen = unsignedIntToString(filesize, entryTmp->file_size);
-        int padding = 15 - fileLen;
-        for (int p = 0; p < padding; p++) console_write(&space, 1);
-        console_write(filesize, fileLen);
-        console_write("  ", 2);
-        console_write(BUF, stringLength(BUF));
-        console_write("\n", 1);
-      }
+                int padding = 15 - fileLen;
+                for (int p = 0; p < padding; p++) console_write_color(" ", 1, 0x07);
+                console_write_color(filesize, fileLen, 0x0A);
+                console_write_color("  ", 2, 0x07);
 
+                console_write_color(BUF, stringLength(BUF), 0x0F);
+                console_write_color("\n", 1, 0x07);
+            }
+        }
     }
-  }
-
 }
-void list_(const char* filename_) {
-  uint8_t sectorBuffer[512] = {0};
-  for (unsigned int s = 0; s < fileSystem.rootDirSectors; s++) {
-    ataReadSector(fileSystem.rootDirLBA + s, sectorBuffer);
 
-    int noOfEntries = 512 / sizeof(Fat16Entry);
+void list_() {
+  Fat16Entry entries[32] = {0};
+  int noEntries = getCurrentEntries(entries);
+  for (int i = 0; i < noEntries; ++i) {
+    char filename[32] = {0};
+    stringFat16Format(filename,entries[i].filename,entries[i].ext);
+    Date date = parseDate(entries[i].modify_date);
+    char day[10], month[10], year[10], filesize[20];
+    char space = ' ';
+    char dot = '.';
+    char zero = '0';
 
-    for (int i = 0; i < noOfEntries; i++) {
-      Fat16Entry* entryTmp = (Fat16Entry*)(sectorBuffer + i * sizeof(Fat16Entry));
+    if (date.day < 10) console_write(&zero, 1);
+    int dayLen = unsignedIntToString(day, date.day);
+    console_write(day, dayLen);
+    console_write(&dot, 1);
 
-      if (entryTmp->filename[0] == 0x00) return;
-      if (entryTmp->filename[0] == 0xE5) continue;
+    if (date.month < 10) console_write(&zero, 1);
+    int monthLen = unsignedIntToString(month, date.month);
+    console_write(month, monthLen);
+    console_write(&dot, 1);
 
-      char BUF[255] = {0};
-      stringFat16Format(BUF,entryTmp->filename,entryTmp->ext);
-      Date date = parseDate(entryTmp->modify_date);
-      char day[10], month[10], year[10], filesize[20];
-      char space = ' ';
-      char dot = '.';
-      char zero = '0';
+    int yearLen = unsignedIntToString(year, date.year);
+    console_write(year, yearLen);
+    console_write("  ", 2);
 
-      if (date.day < 10) console_write(&zero, 1);
-      int dayLen = unsignedIntToString(day, date.day);
-      console_write(day, dayLen);
-      console_write(&dot, 1);
-
-      if (date.month < 10) console_write(&zero, 1);
-      int monthLen = unsignedIntToString(month, date.month);
-      console_write(month, monthLen);
-      console_write(&dot, 1);
-
-      int yearLen = unsignedIntToString(year, date.year);
-      console_write(year, yearLen);
-      console_write("  ", 2);
-
-      if (entryTmp->attributes & 0x10) {
-        console_write("<DIR>          ", 15);
-      } else {
-        int fileLen = unsignedIntToString(filesize, entryTmp->file_size);
-        int padding = 15 - fileLen;
-        for (int p = 0; p < padding; p++) console_write(&space, 1);
-        console_write(filesize, fileLen);
-      }
-
-      console_write("  ", 2);
-      console_write(BUF, stringLength(BUF));
-      console_write("\n", 1);
+    if (entries[i].attributes & 0x10) {
+      console_write("<DIR>          ", 15);
+    } else {
+      int fileLen = unsignedIntToString(filesize, entries[i].file_size);
+      int padding = 15 - fileLen;
+      for (int p = 0; p < padding; p++) console_write(&space, 1);
+      console_write(filesize, fileLen);
     }
+    console_write("  ", 2);
+    console_write(filename,stringLength(filename));
+    console_write("\n", 1);
+
   }
+
 }
 
 void write_(const char* filename_,const char* BUFF,size_t size) {

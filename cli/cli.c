@@ -104,6 +104,10 @@ void cliExecuteCommand(Command* cmd) {
     }
     else if (!stringCompare(cmd->name,"cat")) {
         catCommand(cmd);
+    }else if (!stringCompare(cmd->name,"ls")) {
+        lsCommand(cmd);
+    }else if (!stringCompare(cmd->name,"tree")) {
+        treeCommand(cmd);
     }
     else {
         displayString("UNRECOGNIZED COMMAND!\n",LIGHT_RED);

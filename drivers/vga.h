@@ -37,3 +37,4 @@ void clearScreen(unsigned char color);
 void clearLastCharacter(unsigned char color);
 
 void console_write(const char *str, unsigned int len);
+void console_write_color(const char *str, unsigned int len,unsigned char color);

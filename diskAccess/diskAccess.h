@@ -7,7 +7,7 @@ void initFileSystem();
 
 void printTree();
 void read_(const char* filename_,char* BUFFER);
-void list_(const char* filename_);
+void list_();
 void changeDir(const char* dirName);
 void write_(const char* filename_,const char* BUFF,size_t size);
 void delete_(const char* filename_);
