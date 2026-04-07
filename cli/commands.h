@@ -29,7 +29,7 @@ void catCommand(Command* cmd);
 void cdCommand(Command* cmd);
 void lsCommand(Command* cmd);
 void treeCommand(Command* cmd);
-
+void statCommand(Command* cmd);
 
 static void printAddrInHex(unsigned int addr);
 static void printHexByte(unsigned char b);

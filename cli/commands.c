@@ -131,5 +131,7 @@ void lsCommand(Command* cmd) {
 void treeCommand(Command* cmd) {
     printTree();
 }
-
+void statCommand(Command* cmd) {
+    stat_(cmd->params[0]);
+}
 

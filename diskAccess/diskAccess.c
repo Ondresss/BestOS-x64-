@@ -446,3 +446,57 @@ void rmCurrentDir_(const char* dirName_) {
   changeDir("/");
   delete_(dirName_);
 }
+
+void stat_(const char* filename_) {
+    Fat16Entry entry = findEntryInCurrentDir(filename_);
+
+    if (entry.filename[0] == 0x00 || (uint8_t)entry.filename[0] == 0xE5) {
+        console_write_color("Error: File or directory not found.\n", 35, 0x0C);
+        return;
+    }
+
+    char nameBuf[13] = {0};
+    stringFat16Format(nameBuf, entry.filename, entry.ext);
+
+    console_write_color("  File: ", 8, 0x07);
+    console_write_color(nameBuf, stringLength(nameBuf), 0x0F);
+    console_write_color("\n", 1, 0x07);
+
+    char sizeStr[20] = {0};
+    unsignedIntToString(sizeStr, entry.file_size);
+    char clusterStr[20] = {0};
+    unsignedIntToString(clusterStr, entry.starting_cluster);
+
+    console_write_color("  Size: ", 8, 0x07);
+    console_write_color(sizeStr, stringLength(sizeStr), 0x0A);
+    console_write_color(" bytes", 6, 0x07);
+
+    console_write_color("    Cluster: ", 13, 0x07);
+    console_write_color(clusterStr, stringLength(clusterStr), 0x0B);
+    console_write_color("\n", 1, 0x07);
+
+    console_write_color("  Attrs: ", 9, 0x07);
+    if (entry.attributes & 0x10) console_write_color("DIRECTORY ", 10, 0x0E);
+    if (entry.attributes & 0x01) console_write_color("READ-ONLY ", 10, 0x03);
+    if (entry.attributes & 0x02) console_write_color("HIDDEN ", 7, 0x08);
+    if (entry.attributes & 0x20) console_write_color("ARCHIVE ", 8, 0x07);
+    console_write_color("\n", 1, 0x07);
+
+    Date d = parseDate(entry.modify_date);
+    char day[5], month[5], year[7];
+    unsignedIntToString(day, d.day);
+    unsignedIntToString(month, d.month);
+    unsignedIntToString(year, d.year);
+
+    console_write_color("  Modify: ", 10, 0x07);
+    if (d.day < 10) console_write_color("0", 1, 0x0F);
+    console_write_color(day, stringLength(day), 0x0F);
+    console_write_color(".", 1, 0x0F);
+    if (d.month < 10) console_write_color("0", 1, 0x0F);
+    console_write_color(month, stringLength(month), 0x0F);
+    console_write_color(".", 1, 0x0F);
+    console_write_color(year, stringLength(year), 0x0F);
+    console_write_color("\n", 1, 0x07);
+
+    console_write_color("------------------------------------------\n", 43, 0x08);
+}
