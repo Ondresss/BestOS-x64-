@@ -135,3 +135,16 @@ void statCommand(Command* cmd) {
     stat_(cmd->params[0]);
 }
 
+void execCommand(Command* cmd) {
+	Fat16Entry entry = findEntryInCurrentDir(cmd->params[0]);
+    if (entry.filename[0] == 0 || (entry.attributes & 0x10)) {
+        console_write_color("Error: Not a runnable file.\n", 28, 0x0C);
+        return;
+    }
+    char* load_address = (char*)0x20000;
+    read_(cmd->params[0], load_address);
+    void (*program_entry)() = (void (*)())load_address;
+    console_write_color("Executing... \n", 14, 0x0A);
+    program_entry();
+    console_write_color("\nProgram finished.\n", 18, 0x0A);
+}

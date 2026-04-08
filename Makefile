@@ -55,6 +55,7 @@ disk.img: boot.bin kernel.bin
 	dd if=kernel.bin of=disk.img bs=512 seek=1 conv=notrunc
 
 run: disk.img
+	mcopy -i disk.img@@1024K TEST.BIN ::/TEST.BIN
 	qemu-system-x86_64 -drive file=disk.img,format=raw,index=0,media=disk -serial stdio
 
 clean:
