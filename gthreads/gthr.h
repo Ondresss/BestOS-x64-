@@ -32,6 +32,9 @@ struct gt {
 	long long currentMaxWaitTime;
 	long long noSwitches;
 	struct timeval last_start;
+
+	int priority;
+
 };
 
 

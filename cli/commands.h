@@ -31,6 +31,9 @@ void lsCommand(Command* cmd);
 void treeCommand(Command* cmd);
 void statCommand(Command* cmd);
 void execCommand(Command* cmd);
+void rmCommand(Command* cmd);
+
+
 
 static void printAddrInHex(unsigned int addr);
 static void printHexByte(unsigned char b);

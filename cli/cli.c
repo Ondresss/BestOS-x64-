@@ -112,6 +112,8 @@ void cliExecuteCommand(Command* cmd) {
         statCommand(cmd);
     }else if (!stringCompare(cmd->name,"exec")) {
         execCommand(cmd);
+    } else if (!stringCompare(cmd->name,"rm")) {
+        rmCommand(cmd);
     }
     else {
         displayString("UNRECOGNIZED COMMAND!\n",LIGHT_RED);

@@ -148,3 +148,10 @@ void execCommand(Command* cmd) {
     program_entry();
     console_write_color("\nProgram finished.\n", 18, 0x0A);
 }
+
+void rmCommand(Command* cmd) {
+	delete_(cmd->params[0]);
+	console_write("File deleted: ",13 );
+	console_write(cmd->params[0],stringLength(cmd->params[0]));
+	console_write("\n",1);
+}
