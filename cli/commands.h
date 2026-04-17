@@ -32,7 +32,7 @@ void treeCommand(Command* cmd);
 void statCommand(Command* cmd);
 void execCommand(Command* cmd);
 void rmCommand(Command* cmd);
-
+void writeFileCommand(Command* cmd);
 
 
 static void printAddrInHex(unsigned int addr);

@@ -174,7 +174,10 @@ void list_() {
 }
 
 void write_(const char* filename_,const char* BUFF,size_t size) {
-  uint8_t BUFFER[512];
+  console_write_color("Writing to file: ",17,WHITE);
+  console_write_color(filename_,stringLength(filename_),GREEN_ON_BLACK);
+  console_write_color("\n",1,WHITE);
+  uint8_t BUFFER[512] = {0};
   int prevClusterIndex = -1;
   int startingCluster = -1;
   uint32_t totalBytesRead = 0;
@@ -188,9 +191,20 @@ void write_(const char* filename_,const char* BUFF,size_t size) {
       memoryCopy(BUFFER,BUFF,bytesRead);
       BUFF += bytesRead;
       remainingBytes -= bytesRead;
-    } else
-    {
-      //bytesRead = (int)read(0, BUFFER, 512);
+    } else {
+      int sectorIndex = 0;
+      char c = keyboard_getchar();
+      serial_putchar(c);
+      Event e = keyboard_getEvent();
+      while (sectorIndex < 512) {
+        if (e == EOF_EV) break;
+        BUFFER[sectorIndex++] = c;
+        c = keyboard_getchar();
+        serial_putchar(c);
+        e = keyboard_getEvent();
+      }
+      serial_print("EOF or 512\n");
+      bytesRead = sectorIndex;
     }
     if (bytesRead <= 0) break;
 
@@ -211,7 +225,16 @@ void write_(const char* filename_,const char* BUFF,size_t size) {
 
     writeCluster(current, BUFFER);
     prevClusterIndex = current;
+    char NOBYTES[512] = {0};
+    unsignedIntToString(NOBYTES,bytesRead);
+    console_write_color("Number of bytes written: ",25,WHITE);
+    console_write_color(NOBYTES,stringLength(NOBYTES),GREEN_ON_BLACK);
+    console_write_color("\n",1,WHITE);
     totalBytesRead += bytesRead;
+    if (keyboard_getEvent() == EOF_EV) {
+      console_write_color("Done reading EOF\n",17,WHITE);
+      break;
+    }
   }
 
   if (startingCluster != -1) {

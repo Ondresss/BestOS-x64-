@@ -1,6 +1,7 @@
 #include "fat.h"
 #include "../utils/strings.h"
 #include "diskAccessUtils.h"
+#include "../drivers/keyboard.h"
 #pragma once
 
 void initFileSystem();

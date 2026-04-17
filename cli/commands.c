@@ -155,3 +155,7 @@ void rmCommand(Command* cmd) {
 	console_write(cmd->params[0],stringLength(cmd->params[0]));
 	console_write("\n",1);
 }
+
+void writeFileCommand(Command* cmd) {
+    write_(cmd->params[0],0,0);
+}

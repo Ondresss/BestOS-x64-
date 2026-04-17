@@ -88,7 +88,7 @@ void cliExecuteCommand(Command* cmd) {
     }
     else if (!stringCompare(cmd->name,"read")) {
         readCommand(cmd);
-    } else if (!stringCompare(cmd->name,"write")) {
+    } else if (!stringCompare(cmd->name,"wr")) {
         writeCommand(cmd);
     } else if (!stringCompare(cmd->name,"load")) {
         loadCommand(cmd);
@@ -114,6 +114,8 @@ void cliExecuteCommand(Command* cmd) {
         execCommand(cmd);
     } else if (!stringCompare(cmd->name,"rm")) {
         rmCommand(cmd);
+    } else if (!stringCompare(cmd->name,"write")) {
+        writeFileCommand(cmd);
     }
     else {
         displayString("UNRECOGNIZED COMMAND!\n",LIGHT_RED);
