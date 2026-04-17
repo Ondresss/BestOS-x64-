@@ -138,7 +138,39 @@ void memoryCopy(void *dest, const void *src, size_t n) {
 
 }
 
-void stringParseFilename(char* BUFFER, const char* path) {
+void stringUppercase(char* str) {
+    int len = stringLength(str);
+    for (int i = 0; i < len; ++i) {
+        if (str[i] >= 'a' && str[i] <= 'z') {
+            str[i]-=32;
+        }
+    }
+}
+
+void stringParseFilename(char* dest,const char* src) {
+    int len = stringLength(src);
+    int i = 0;
+    for (i = 0; i < len; ++i) {
+        if (src[i] == '.') break;
+        dest[i] = src[i];
+    }
+    dest[i] = '\0';
+}
+
+void stringParseExt(char* dest,const char* src) {
+    int len = stringLength(src);
+    int currentIndex = 0;
+    int found = 0;
+    for (int i = 0; i < len; ++i) {
+        if (found) {
+            dest[currentIndex++] = src[i];
+            continue;
+        }
+        if (src[i] == '.') found = 1;
+    }
+    dest[currentIndex] = '\0';
+}
+void stringParseFilenameFrom(char* BUFFER, const char* path) {
     int slashIndex = stringFindChar(path, '/', true, 0);
 
     if (slashIndex != -1 && path[slashIndex + 1] == '\0') {

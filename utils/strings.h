@@ -14,3 +14,6 @@ int stringSplit(char* dest,char* src,char sep);
 int stringToInt(char* buf);
 unsigned int stringToHex(char* str);
 void *memset(void *ptr, int value, size_t num);
+void stringUppercase(char* str);
+void stringParseExt(char* dest,const char* src);
+void stringParseFilenameFrom(char* BUFFER, const char* path);

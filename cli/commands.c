@@ -159,3 +159,6 @@ void rmCommand(Command* cmd) {
 void writeFileCommand(Command* cmd) {
     write_(cmd->params[0],0,0);
 }
+void touchCommand(Command* cmd) {
+    touch_(cmd->params[0]);
+}

@@ -33,6 +33,7 @@ void initFileSystem() {
   currentDir.dirLBA = -1;
   memZero(currentDir.filename,256);
   stringCat(currentDir.filename,"/");
+  serial_print("File system initialized\n");
 }
 
 
@@ -207,8 +208,11 @@ void write_(const char* filename_,const char* BUFF,size_t size) {
       bytesRead = sectorIndex;
     }
     if (bytesRead <= 0) break;
-
     int current = findFreeCluster();
+    Fat16Entry entry = findEntryInCurrentDir(filename_);
+    if (entry.filename[0] != 0x00) {
+        current = entry.starting_cluster;
+    }
     if (current == -1) {
       console_write("Disk full\n", 10);
       break;
@@ -286,6 +290,46 @@ void read_(const char* filename_,char* BUFFER) {
   }
 }
 
+
+static unsigned int lastFoundLBA = 0;
+Fat16Entry* findFirstFreeEntryInCurrentDir() {
+  uint8_t sectorBuffer[512] = {0};
+  uint32_t startLBA = 0;
+  uint32_t sectorsToRead = 0;
+
+  if (currentDir.dirLBA != -1) {
+    startLBA = currentDir.dirLBA;
+    sectorsToRead = fileSystem.bs.sectors_per_cluster;
+  } else {
+    startLBA = fileSystem.rootDirLBA;
+    sectorsToRead = fileSystem.rootDirSectors;
+  }
+
+  for (uint32_t s = 0; s < sectorsToRead; s++) {
+    if (ataReadSector(startLBA + s, sectorBuffer) != 0) continue;
+
+    for (int j = 0; j < 16; j++) {
+      Fat16Entry* entry = (Fat16Entry*)(sectorBuffer + j * sizeof(Fat16Entry));
+
+      if (entry->filename[0] == 0x00 || (uint8_t)entry->filename[0] == 0xE5) {
+        lastFoundLBA = startLBA + s;
+        return entry;;
+      }
+    }
+  }
+
+  return (Fat16Entry*)0;
+}
+
+void touch_(const char* filename_) {
+  int firstClusterIndex = findFreeCluster();
+  fileSystem.fatTable[firstClusterIndex] = 0xFFFF;
+  findFirstFreeEntry(filename_,firstClusterIndex,0);
+  updateFatTable();
+  console_write_color("Created file: ",14,WHITE);
+  console_write_color(filename_,stringLength(filename_),GREEN_ON_BLACK);
+  console_write_color("\n",1,WHITE);
+}
 
 void findFirstFreeEntry(const char* fileName, int startingCluster, uint32_t fileSize) {
   delete_(fileName);

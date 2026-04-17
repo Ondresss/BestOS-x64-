@@ -116,6 +116,8 @@ void cliExecuteCommand(Command* cmd) {
         rmCommand(cmd);
     } else if (!stringCompare(cmd->name,"write")) {
         writeFileCommand(cmd);
+    } else if (!stringCompare(cmd->name,"touch")) {
+        touchCommand(cmd);
     }
     else {
         displayString("UNRECOGNIZED COMMAND!\n",LIGHT_RED);
