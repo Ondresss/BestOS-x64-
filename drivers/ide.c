@@ -16,8 +16,9 @@ void ideSetAddress(unsigned int lba) {
     portByteOut(ATA_LBA_HIGH, (unsigned char)(lba >> 16));
 }
 int ataReadSector(unsigned int lba, void *buffer) {
-    portByteOut(ATA_DRIVE_SEL, 0xE0 | ((lba >> 24) & 0x0F));
+    unsigned int flags;
 
+    portByteOut(ATA_DRIVE_SEL, 0xE0 | ((lba >> 24) & 0x0F));
     for(int i=0; i<4; i++) portByteIn(ATA_STATUS);
 
     portByteOut(ATA_SECTOR_CNT, 1);
@@ -30,7 +31,9 @@ int ataReadSector(unsigned int lba, void *buffer) {
     while (1) {
         unsigned char status = portByteIn(ATA_STATUS);
         if (!(status & 0x80) && (status & 0x08)) break;
-        if (status & 0x01) return -1;
+        if (status & 0x01) {
+            return -1;
+        }
     }
 
     unsigned short *ptr = (unsigned short *)buffer;
@@ -38,9 +41,13 @@ int ataReadSector(unsigned int lba, void *buffer) {
         ptr[i] = portWordIn(ATA_DATA);
     }
 
+    portByteIn(0x1F7);
+
     return 0;
 }
 int ataWriteSector(unsigned int lba, void *buffer) {
+    unsigned int flags;
+
     portByteOut(ATA_DRIVE_SEL, 0xE0 | ((lba >> 24) & 0x0F));
     for(int i = 0; i < 4; i++) portByteIn(ATA_STATUS);
 
@@ -54,7 +61,9 @@ int ataWriteSector(unsigned int lba, void *buffer) {
     while (1) {
         unsigned char status = portByteIn(ATA_STATUS);
         if (!(status & 0x80) && (status & 0x08)) break;
-        if (status & 0x01) return -1;
+        if (status & 0x01) {
+            return -1;
+        }
     }
 
     unsigned short *ptr = (unsigned short *)buffer;

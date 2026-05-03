@@ -35,6 +35,6 @@ void displayString(char* str,unsigned char color);
 void setCursor(int offset);
 void clearScreen(unsigned char color);
 void clearLastCharacter(unsigned char color);
-
+void displayStringAt(char* str,unsigned char color,int x,int y);
 void console_write(const char *str, unsigned int len);
 void console_write_color(const char *str, unsigned int len,unsigned char color);

@@ -7,8 +7,10 @@ LDFLAGS = -m elf_i386 -Ttext 0x7E00 --oformat binary
 ASFLAGS = -f bin
 OBJFLAGS = -f elf32
 
-KERNEL_OBJS = kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o ide.o cli.o commands.o diskAccess.o diskAccessUtils.o
+KERNEL_OBJS = kernel_entry.o kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o ide.o cli.o commands.o diskAccess.o diskAccessUtils.o idt.o isr.o pic.o timer.o scheduler.o
 
+kernel_entry.o: kernel_entry.asm
+	$(AS) $(OBJFLAGS) kernel_entry.asm -o kernel_entry.o
 
 diskAccess.o: ./diskAccess/diskAccess.o
 	$(CC) $(CFLAGS) ./diskAccess/diskAccess.c -o diskAccess.o
@@ -19,6 +21,10 @@ boot.bin: fe-boot.asm
 
 %.o: %.c
 	$(CC) $(CFLAGS) $< -o $@
+
+
+scheduler.o: ./scheduler/scheduler.o
+	$(CC) $(CFLAGS) ./scheduler/scheduler.c -o scheduler.o
 
 serial.o: ./drivers/serial.o
 	$(CC) $(CFLAGS) ./drivers/serial.c -o serial.o
@@ -39,6 +45,18 @@ strings.o: ./utils/strings.o
 io.o: ./arch/io.c
 	$(CC) $(CFLAGS) ./arch/io.c -o io.o
 
+timer.o: ./arch/timer.c
+	$(CC) $(CFLAGS) ./arch/timer.c -o timer.o
+
+idt.o: ./arch/idt.c
+	$(CC) $(CFLAGS) ./arch/idt.c -o idt.o
+
+isr.o: ./arch/isr.c
+	$(CC) $(CFLAGS) ./arch/isr.c -o isr.o
+
+pic.o: ./arch/pic.c
+	$(CC) $(CFLAGS) ./arch/pic.c -o pic.o
+
 vga.o: ./drivers/vga.c
 	$(CC) $(CFLAGS) ./drivers/vga.c -o vga.o
 
@@ -48,14 +66,14 @@ functions.o: functions.asm
 kernel.bin: $(KERNEL_OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $(KERNEL_OBJS)
 
-
 disk.img: boot.bin kernel.bin
 	cp sd.img disk.img
 	dd if=boot.bin of=disk.img bs=1 count=446 conv=notrunc
 	dd if=kernel.bin of=disk.img bs=512 seek=1 conv=notrunc
+	#mcopy -o -i disk.img@@1048576 ./test.bin ::/TEST.BIN
 
 run: disk.img
 	qemu-system-x86_64 -drive file=disk.img,format=raw,index=0,media=disk -serial stdio
 
 clean:
-	rm -f *.bin *.o *.img ./arch/*.o ./drivers/*.o
+	rm -f *.bin *.o ./arch/*.o ./drivers/*.o ./cli/*.o ./diskAccess/*.o ./scheduler/*.o

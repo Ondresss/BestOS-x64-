@@ -40,11 +40,31 @@ void g(void) {
 	}
 }
 
-int main(void) {
-	gt_init();            // initialize threads, see gthr.c
-	gt_create(f);         // set f() as first thread
-	gt_create(f);         // set f() as second thread
-	gt_create(g);         // set g() as third thread
-	gt_create(g);         // set g() as fourth thread
-	gt_return(1);         // wait until all threads terminate
+int main(int argc,const char** argv) {
+
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i],"-RR")) setSchedulingAlg(RR);
+		if (!strcmp(argv[i],"-PRI")) setSchedulingAlg(RP);
+		if (!strcmp(argv[i],"-LS")) setSchedulingAlg(RR);
+	}
+	gt_init();
+	if (getSchedulingAlg() == RP) {
+		priority_create(f,-20);
+		priority_create(f,-5);
+		priority_create(g,2);
+		priority_create(g,8);
+		gt_return(1);
+	}
+	if (getSchedulingAlg() == LOT) {
+		lottery_create(f,100);
+		lottery_create(f,200);
+		lottery_create(g,400);
+		lottery_create(g,800);
+		gt_return(1);
+	}
+	gt_create(f);
+	gt_create(f);
+	gt_create(g);
+	gt_create(g);
+	gt_return(1);
 }

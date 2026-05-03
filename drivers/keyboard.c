@@ -1,5 +1,7 @@
 #include "keyboard.h"
 
+#include <sys/types.h>
+
 Event currentEvent = NONE_EV;
 
 void serial_print_hex8(unsigned char n) {
@@ -65,4 +67,15 @@ char keyboard_getchar() {
             }
         }
     }
+}
+
+uint32_t keyboard_callback(struct registers *regs) {
+    uint32_t final_esp = regs->eax;
+    uint8_t scancode = portByteIn(0x60);
+    serial_print("Keypressed\n");
+    return final_esp;
+}
+void init_keyboard() {
+
+    register_interrupt_handler(33, keyboard_callback);
 }

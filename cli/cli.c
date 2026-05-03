@@ -30,7 +30,7 @@ int cliReadline(char* buffer, int max_len) {
 }
 
 void cliLoop() {
-    char BUFFER[1024] = {0};
+    char BUFFER[128] = {0};
     Command currentCommand = {0};
     while (1) {
         memZero((char*)&currentCommand,sizeof(Command));

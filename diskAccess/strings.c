@@ -49,6 +49,11 @@ void stringCat(char* str1,const char* str2) {
 }
 
 int unsignedIntToString(char* buf,unsigned int number){
+    if (number == 0) {
+        buf[0] = '0';
+        buf[1] = '\0';
+        return 1;
+    }
     unsigned int cur = number;
     unsigned int i = 0;
     while (cur > 0) {

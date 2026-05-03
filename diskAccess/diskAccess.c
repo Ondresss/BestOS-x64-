@@ -5,6 +5,17 @@
 CurrentDir currentDir;
 FileSystem fileSystem;
 
+uint32_t disk_callback(struct registers *regs) {
+  uint32_t final_esp = (uint32_t)regs;
+  uint8_t status = portByteIn(0x1F7);
+  char buf[4] = {'0' + (status >> 4), '0' + (status & 0xF), '\n', '\0'};
+  serial_print("Disk IRQ. Status: ");
+  serial_print(buf);
+
+  return  final_esp;
+}
+
+
 void getCurrentDir(char * buffer) {
   if (currentDir.dirLBA == -1) {
 
@@ -15,24 +26,29 @@ void getCurrentDir(char * buffer) {
 }
 
 void initFileSystem() {
-  uint16_t fatTable[128 * 1024] = {0};
   uint8_t sectorBuffer[512] = {0};
-  ataReadSector(0,sectorBuffer);
+
+  ataReadSector(0, sectorBuffer);
   PartitionTable* ptTmp = (PartitionTable*)(sectorBuffer + 0x1BE);
   fileSystem.pt[0] = *ptTmp;
-  ataReadSector(fileSystem.pt[0].start_sector,sectorBuffer);
+
+  ataReadSector(fileSystem.pt[0].start_sector, sectorBuffer);
   Fat16BootSector* bsTmp = (Fat16BootSector*)sectorBuffer;
   fileSystem.bs = *bsTmp;
-  readFat1Table(fatTable,&fileSystem.bs,fileSystem.pt[0].start_sector);
-  unsigned int rootDirLBA = (fileSystem.pt[0].start_sector + fileSystem.bs.reserved_sectors) + fileSystem.bs.number_of_fats * fileSystem.bs.fat_size_sectors;
-  unsigned int rootDirSectors = (fileSystem.bs.root_dir_entries * sizeof(Fat16Entry)) / 512;
-  fileSystem.rootDirLBA = rootDirLBA;
-  fileSystem.rootDirSectors = rootDirSectors;
-  readFat1Table(fileSystem.fatTable,&fileSystem.bs,fileSystem.pt[0].start_sector);
+
+  fileSystem.rootDirLBA = (fileSystem.pt[0].start_sector +
+                           fileSystem.bs.reserved_sectors) +
+                           fileSystem.bs.number_of_fats *
+                           fileSystem.bs.fat_size_sectors;
+  fileSystem.rootDirSectors = (fileSystem.bs.root_dir_entries *
+                               sizeof(Fat16Entry)) / 512;
+
+  readFat1Table(fileSystem.fatTable, &fileSystem.bs,
+                fileSystem.pt[0].start_sector);
 
   currentDir.dirLBA = -1;
-  memZero(currentDir.filename,256);
-  stringCat(currentDir.filename,"/");
+  memZero(currentDir.filename, 256);
+  stringCat(currentDir.filename, "/");
   serial_print("File system initialized\n");
 }
 

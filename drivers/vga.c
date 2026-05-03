@@ -102,3 +102,14 @@ void console_write_color(const char *str, unsigned int len,unsigned char color) 
     checkForScrolling(&offset);
     setCursor(offset / 2);
 }
+
+void displayStringAt(char* str,unsigned char color,int x,int y) {
+    int offset = (y * 80 + x) * 2;
+    int i = 0;
+    while (str[i] != '\0') {
+        if (offset >= 4000) break;
+        setCharAtVideoMem(str[i],offset,color);
+        offset+=2;
+        ++i;
+    }
+}

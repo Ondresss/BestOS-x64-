@@ -1,12 +1,21 @@
+#pragma once
+#define AGING_THRESHOLD_US 2000000
 #include <sys/time.h>
 #include <string.h>
+#include <stdint.h>
 enum {
-	MaxGThreads = 5,            // Maximum number of threads, used as array size for gttbl
-	StackSize = 0x400000,       // Size of stack of each thread
+	MaxGThreads = 5,
+	StackSize = 0x400000,
 };
 
+
+typedef enum {
+	RR,
+	RP,
+	LOT
+}SchedulingAlg;
+
 struct gt {
-	// Saved context, switched by gtswtch.S (see for detail)
 	struct gt_context {
 		uint64_t rsp;
 		uint64_t r15;
@@ -17,7 +26,6 @@ struct gt {
 		uint64_t rbp;
 	}
 	ctx;
-	// Thread state
 	enum {
 		Unused,
 		Running,
@@ -34,16 +42,30 @@ struct gt {
 	struct timeval last_start;
 
 	int priority;
-
+	int tickets;
 };
 
 
-void gt_init(void);                                                     // initialize gttbl
-void gt_return(int ret);                                                // terminate thread
-void gt_switch(struct gt_context * old, struct gt_context * new);       // declaration from gtswtch.S
-bool gt_schedule(void);                                                 // yield and switch to another thread
-void gt_stop(void);                                                     // terminate current thread
-int gt_create(void( * f)(void));                                        // create new thread and set f as new "run" function
-void gt_reset_sig(int sig);                                             // resets signal
-void gt_alarm_handle(int sig);                                          // periodically triggered by alarm
-int gt_uninterruptible_nanosleep(time_t sec, long nanosec);             // uninterruptible sleep
+void gt_init(void);
+void gt_return(int ret);
+void gt_switch(struct gt_context * old, struct gt_context * new);
+bool gt_schedule(void);
+void gt_stop(void);
+int gt_create(void( * f)(void));
+void gt_reset_sig(int sig);
+void gt_alarm_handle(int sig);
+int gt_uninterruptible_nanosleep(time_t sec, long nanosec);
+
+void calc_total_time();
+void calc_statistics(struct gt* p);
+
+struct gt* priority_schedule();
+int priority_create(void( * f)(void),int priority);
+void priority_age();
+void priority_remove(struct gt* p);
+
+int lottery_create(void( * f)(void),int ticketSum);
+struct gt*  lottery_schedule();
+
+void setSchedulingAlg(SchedulingAlg alg);
+SchedulingAlg getSchedulingAlg(void);

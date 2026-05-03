@@ -2,9 +2,13 @@
 #include "../utils/strings.h"
 #include "diskAccessUtils.h"
 #include "../drivers/keyboard.h"
+#include  "../arch/idt.h"
+#include  "../arch/io.h"
 #pragma once
 
 void initFileSystem();
+uint32_t disk_callback(struct registers *regs);
+
 
 void printTree();
 void read_(const char* filename_,char* BUFFER);
@@ -17,7 +21,6 @@ void changeDirAbsolute_(const char* absolutePath);
 void create_(const char* filename_);
 void rmCurrentDir_(const char* dirName_);
 void touch_(const char* filename_);
-
 
 int getCurrentEntries(Fat16Entry* arr);
 Fat16Entry findEntryInCurrentDir(const char* path);
