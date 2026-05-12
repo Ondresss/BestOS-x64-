@@ -19,7 +19,6 @@ getCPUVendor:
     ret
 
 [extern generic_isr_handler]
-
 common_isr_handler:
     pusha
 
@@ -35,6 +34,8 @@ common_isr_handler:
     mov eax, esp
     push eax
     call generic_isr_handler
+    add esp, 4
+
     mov esp, eax
 
     pop eax

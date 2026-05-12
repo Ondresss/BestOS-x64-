@@ -7,11 +7,14 @@ LDFLAGS = -m elf_i386 -Ttext 0x7E00 --oformat binary
 ASFLAGS = -f bin
 OBJFLAGS = -f elf32
 
-KERNEL_OBJS = kernel_entry.o kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o ide.o cli.o commands.o diskAccess.o diskAccessUtils.o idt.o isr.o pic.o timer.o scheduler.o
+KERNEL_OBJS = kernel_entry.o kernel.o functions.o vga.o io.o strings.o serial.o keyboard.o ide.o cli.o commands.o diskAccess.o diskAccessUtils.o idt.o isr.o pic.o timer.o scheduler.o memory.o
 
 kernel_entry.o: kernel_entry.asm
 	$(AS) $(OBJFLAGS) kernel_entry.asm -o kernel_entry.o
 
+
+memory.o: ./scheduler/memory.o
+	$(CC) $(CFLAGS) ./scheduler/memory.c -o memory.o
 diskAccess.o: ./diskAccess/diskAccess.o
 	$(CC) $(CFLAGS) ./diskAccess/diskAccess.c -o diskAccess.o
 diskAccessUtils.o: ./diskAccess/diskAccessUtils.o
@@ -70,7 +73,7 @@ disk.img: boot.bin kernel.bin
 	cp sd.img disk.img
 	dd if=boot.bin of=disk.img bs=1 count=446 conv=notrunc
 	dd if=kernel.bin of=disk.img bs=512 seek=1 conv=notrunc
-	#mcopy -o -i disk.img@@1048576 ./test.bin ::/TEST.BIN
+	mcopy -o -i disk.img@@1048576 ./test.bin ::/TEST.BIN
 
 run: disk.img
 	qemu-system-x86_64 -drive file=disk.img,format=raw,index=0,media=disk -serial stdio

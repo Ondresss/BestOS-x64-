@@ -6,3 +6,4 @@ int cliParse(char* line,Command* cmd);
 void cliLoop();
 void cliPrintCommand(Command* cmd);
 void cliExecuteCommand(Command* cmd);
+void cliPrintCPUVendor();

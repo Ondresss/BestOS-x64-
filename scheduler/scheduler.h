@@ -1,4 +1,5 @@
 #pragma once
+#include "memory.h"
 #include <stdint.h>
 #define STACK_SIZE 4096
 #define MAX_PRIORITY_QUEUES 40
@@ -11,6 +12,12 @@ struct gt {
         Running,
         Ready,
      } state;
+
+    uint32_t eip;
+    uint32_t base;
+    uint32_t stack_top;
+    int partition_idx;
+
     long long totalTime;
     long long currentWaitTime;
     long long totalWaitTime;
@@ -35,3 +42,4 @@ int schedule_create(void (*f)(void));
 uint32_t schedule_tick(uint32_t current_esp);
 void __attribute__((noreturn)) schedule_return(int ret);
 void scheduler_init();
+struct gt* scheduler_find_empty_pos();

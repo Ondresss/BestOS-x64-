@@ -23,11 +23,15 @@ uint32_t timer_callback(struct registers *regs) {
     static int ticks_elapsed = 0;
     ticks_elapsed++;
     total_ticks++;
+    char tickStr[12] = {0};
+    unsignedIntToString(tickStr, total_ticks);
+    serial_print("TICK: ");
+    serial_print(tickStr);
+    serial_print("\n");
     if (ticks_elapsed >= 12) {
         ticks_elapsed = 0;
         final_esp = schedule_tick((uint32_t)regs);
         gt_current->noSwitches++;
-        serial_print("Switching..\n");
     } else {
         gt_current->totalTime++;
     }

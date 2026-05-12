@@ -123,3 +123,12 @@ void cliExecuteCommand(Command* cmd) {
         displayString("UNRECOGNIZED COMMAND!\n",LIGHT_RED);
     }
 }
+
+void cliPrintCPUVendor() {
+    while (true) {
+        char BUFFER[128] = {0};
+        getCPUVendor(BUFFER);
+        displayStringAt("CPU Vendor: ",GREEN_ON_BLACK,0,0);
+        displayStringAt(BUFFER,LIGHT_RED,15,0);
+    }
+}

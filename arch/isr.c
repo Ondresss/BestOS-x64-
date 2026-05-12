@@ -13,9 +13,7 @@ uint32_t generic_isr_handler(struct registers *regs) {
     if (interrupt_handlers[regs->int_no] != 0) {
         interrupt_handlers[regs->int_no](regs);
     }
-
     if (regs->int_no == 32) {
-
         isr_t timerCallback = interrupt_handlers[regs->int_no];
         final_esp = timerCallback(regs);
         portByteOut(0x20, 0x20);

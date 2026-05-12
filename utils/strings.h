@@ -17,3 +17,4 @@ void *memset(void *ptr, int value, size_t num);
 void stringUppercase(char* str);
 void stringParseExt(char* dest,const char* src);
 void stringParseFilenameFrom(char* BUFFER, const char* path);
+void getCPUVendor(char* vendor);

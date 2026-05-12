@@ -136,19 +136,32 @@ void statCommand(Command* cmd) {
 }
 
 void execCommand(Command* cmd) {
-	Fat16Entry entry = findEntryInCurrentDir(cmd->params[0]);
+    Fat16Entry entry = findEntryInCurrentDir(cmd->params[0]);
     if (entry.filename[0] == 0 || (entry.attributes & 0x10)) {
         console_write_color("Error: Not a runnable file.\n", 28, 0x0C);
         return;
     }
-    char* load_address = (char*)0x20000;
-    read_(cmd->params[0], load_address);
-    void (*program_entry)() = (void (*)())load_address;
-    console_write_color("Executing... \n", 14, 0x0A);
-    program_entry();
-    console_write_color("\nProgram finished.\n", 18, 0x0A);
-}
 
+    struct partition* part = memory_find_free_partition();
+    if (!part) {
+        console_write_color("Error: No free memory slot.\n", 28, 0x0C);
+        return;
+    }
+
+    char* load_address = (char*)part->base;
+    read_(cmd->params[0], load_address);
+
+    void (*program_entry)() = (void (*)())load_address;
+
+    int tid = schedule_create(program_entry);
+
+    if (tid != -1) {
+        console_write_color("Program started in background. TID: ", 36, 0x0A);
+    } else {
+        part->used = 0;
+        console_write_color("Error: Could not create thread.\n", 32, 0x0C);
+    }
+}
 void rmCommand(Command* cmd) {
 	delete_(cmd->params[0]);
 	console_write("File deleted: ",13 );
